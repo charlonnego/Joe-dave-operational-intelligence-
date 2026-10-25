@@ -1,53 +1,33 @@
 # Joe & Dave Operations Intelligence
 
-**Joe & Dave** is a business-operations web application being prepared as a standalone software asset for technical review and potential acquisition.
+**Live application:** https://joe-dave-operations-intelligence.pages.dev/
 
-Live application: https://joe-dave-operations-intelligence.pages.dev/
+Joe & Dave is a business-operations web application with a standalone source boundary in this repository.
 
-## Product direction
+## Standalone source layout
 
-The product has been presented as a unified operations platform for businesses, with work discussed across:
-- Accounting and finance workflows
-- Invoicing and receipts
-- Multi-currency business operations
-- Accounts receivable and accounts payable
-- Tax-related workflows
-- Restricted-access HR and payroll
-- User sign-in and account creation
-- API/service connectivity and operational dashboards
+- `products/joe-dave-operations-intelligence/` — web application, operational UI, PWA manifest/service worker, product documentation, and additive SQL migrations.
+- `cloudflare/worker.js` — API Worker implementation.
+- `cloudflare/d1/migrations/` — D1 schema migrations.
+- `cloudflare/wrangler.toml` — Worker/D1 deployment configuration.
+- `supabase/` — the product's Supabase schema and migration reference.
 
-**Important:** This list describes the intended/discussed scope, not a claim that every module is complete, production-ready, or independently tested. Buyers should validate each workflow against the deployed application and source code.
+The source has been copied from the `custom/operations-intelligence` branch of `charlonnego/erpnext` into this standalone repository. The app and API are now represented here without copying the full ERPNext/Frappe framework.
 
-## Repository status
+## Important deployment notes
 
-This repository is the new standalone home for the Joe & Dave asset. It is currently being set up. The original implementation has been associated with the `charlonnego/erpnext` repository and its custom `custom/operations-intelligence` branch.
+1. Cloudflare Pages should use `products/joe-dave-operations-intelligence` as its build/output root for the static PWA.
+2. Deploy the API Worker from the `cloudflare/` directory using Wrangler, after confirming the account and D1 database IDs in `wrangler.toml` belong to the intended deployment.
+3. Apply only the database migration set appropriate to the chosen backend. Do not run both D1 and Supabase migrations against the same database.
+4. Keep secrets in platform secret storage; never commit API tokens, passwords, or private customer data.
+5. Run authenticated end-to-end tests against the target environment before changing production routing or describing the transfer as fully verified.
 
-The standalone source-code transfer has **not yet been completed**. Until the application-specific source is separated, reviewed, and committed here, this repository is not a complete buildable copy of the live product.
+The existing `wrangler.toml` includes environment identifiers from the source deployment. Confirm them before deploying; this repository migration does not transfer Cloudflare account ownership, databases, domains, or secrets.
 
-## Acquisition and handover
+## Feature and readiness claims
 
-A prospective buyer should receive, subject to ownership and third-party licence review:
-- The Joe & Dave-specific source code and customisations
-- A list of third-party frameworks, dependencies, and applicable licences
-- Deployment/configuration instructions with secrets excluded
-- A feature-by-feature acceptance checklist
-- A handover of relevant domains, hosting, and service accounts only where transferable and agreed
+The source contains workflows for finance, invoices/receipts, purchasing, inventory, HR/payroll, manufacturing, projects and helpdesk. Their presence in source does not mean every workflow is independently validated for production. Known limitations and acceptance checks are documented in `products/joe-dave-operations-intelligence/README.md` and `docs/BUYER-REVIEW-CHECKLIST.md`.
 
-No passwords, API keys, private customer records, or production secrets belong in this repository.
+## Ownership and licensing
 
-## Framework and licensing note
-
-ERPNext/Frappe and other third-party components remain subject to their own licences. This project must not be represented as exclusive ownership of those upstream components. Any sale should clearly distinguish original Joe & Dave work from open-source and third-party software.
-
-## Current release status
-
-- [x] Standalone repository created
-- [ ] Joe & Dave application source transferred and reviewed
-- [ ] Build and deployment instructions verified
-- [ ] Automated tests and core workflows verified
-- [ ] Third-party licence and ownership review completed
-- [ ] Buyer handover package completed
-
-## Contact
-
-For acquisition enquiries, contact the project owner through the GitHub profile associated with this repository.
+This repository separates the Joe & Dave implementation from the upstream ERPNext/Frappe codebase. Third-party software remains governed by its own licence and attribution terms. Any sale must distinguish original project code from open-source components and separately address hosting, domain, database, and account transferability.
