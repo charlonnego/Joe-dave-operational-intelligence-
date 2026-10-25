@@ -1,32 +1,41 @@
 # Buyer Review & Handover Checklist
 
-This checklist is intended to help assess the Joe & Dave Operations Intelligence software asset before any sale.
+Use this checklist to validate the Joe & Dave asset before sale or production handover.
 
-## What the buyer should verify
+## Source migration status
+
+- [x] Standalone GitHub repository created
+- [x] Product web application and PWA assets copied into `products/joe-dave-operations-intelligence/`
+- [x] Cloudflare API Worker and Wrangler configuration copied into `cloudflare/`
+- [x] Cloudflare D1 migrations copied into `cloudflare/d1/migrations/`
+- [x] Product-level additive SQL migrations copied
+- [x] Supabase schema/reference migration copied
+- [ ] Clean-checkout build and deployment tested
+- [ ] Production credentials and account ownership independently reviewed
+- [ ] Authenticated end-to-end workflows passed against the target environment
+- [ ] Third-party licence and ownership review completed
+
+## Functional acceptance
 
 - [ ] Sign-up, sign-in, sign-out, and account recovery
-- [ ] Role-based access, especially HR/payroll restrictions
-- [ ] Accounting and finance workflows actually implemented
-- [ ] Invoice and receipt generation, print layout, and downloadable output
-- [ ] Multi-currency handling and any exchange-rate assumptions
-- [ ] API connectivity, error states, and retry behavior
-- [ ] Responsive behavior on phone, tablet, desktop, and large displays
-- [ ] PWA manifest, service worker, install prompt, and offline behavior (if advertised)
+- [ ] Role-based access, especially restricted HR/payroll access
+- [ ] Accounting and finance workflows
+- [ ] Invoice/receipt creation, printing, and downloadable output
+- [ ] Currency handling and rounding rules
+- [ ] API connectivity, error states, and retries
+- [ ] Responsive behavior on phones, tablets, desktops, and large displays
+- [ ] PWA manifest, service worker, installation prompt, and offline behavior as advertised
 - [ ] Data persistence, backups, and restore procedure
-- [ ] Security rules, access policies, and test coverage
-- [ ] Deployment reproducibility from a clean checkout
-- [ ] Third-party dependency licences and attribution
+- [ ] Access policies, auditability, and tests
 
 ## Transfer boundaries
 
-The sale agreement should identify separately:
+The sale agreement should distinguish:
 1. Original Joe & Dave code and assets.
-2. Upstream ERPNext/Frappe code and other third-party components, which remain under their applicable licences.
-3. Cloud hosting, domains, database, email, and API accounts, which may require separate transfer or buyer-owned replacements.
-4. Customer/business data, which should not be included unless lawful and explicitly agreed.
+2. ERPNext/Frappe and other third-party components, under their applicable licences.
+3. Cloud hosting, domains, database instances, email, and API accounts, which may need separate transfer or buyer-owned replacements.
+4. Customer/business data, which must not be included unless lawful and explicitly agreed.
 
-## Current technical handover status
+## Deployment caution
 
-The live product has been associated with the custom branch `custom/operations-intelligence` in `charlonnego/erpnext`. The standalone repository was created separately, and this documentation has been committed there. **The application-specific source code has not yet been migrated into this repository or validated as a clean standalone build.**
-
-Do not market the repository as a complete source-code delivery until that work is done.
+The source files have been copied, but a Git commit is not proof of a successful clean build, production deployment, or full browser-based acceptance test. Verify the account and database IDs in `cloudflare/wrangler.toml` before deploying, keep secrets out of Git, and apply only the migration set for the chosen database backend.
