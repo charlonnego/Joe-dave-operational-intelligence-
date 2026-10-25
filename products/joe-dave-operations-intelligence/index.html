@@ -527,6 +527,22 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
  $('workspace-switch-form').addEventListener('submit',async e=>{e.preventDefault();try{const d=await api('/workspace/switch',{method:'POST',body:JSON.stringify({business_id:$('workspace-switch-select').value})});business=await api('/business');$('workspace-label').textContent=business.display_name;result('workspace-switch-msg','Switched to '+d.business.display_name+'.');await loadWorkspace();showPage('team');}catch(err){result('workspace-switch-msg',err.message,false);}});
  $('team-member-form').addEventListener('submit',async e=>{e.preventDefault();try{const email=$('team-member-email').value,role=$('team-member-role').value;await api('/workspace/members',{method:'POST',body:JSON.stringify({email,role})});$('team-member-form').reset();result('team-member-msg','Team member added with '+role+' access.');await loadSaaS();}catch(err){result('team-member-msg',err.message,false);}});
  $('team-members-list').addEventListener('click',async e=>{const b=e.target.closest('[data-remove-member]');if(!b)return;if(!confirm('Remove this person from the current workspace?'))return;try{await api('/workspace/members/'+encodeURIComponent(b.dataset.removeMember),{method:'DELETE'});await loadSaaS();result('team-member-msg','Team member removed.');}catch(err){result('team-member-msg',err.message,false);}});
+ window.addEventListener('jd:session-established',async()=>{
+  token=localStorage.getItem('jd_session')||'';
+  try{
+   if(!token)throw new Error('The session token was not saved. Please sign in again.');
+   await loadWorkspace();
+   $('auth-backdrop').style.display='none';
+   $('auth-form').reset();
+   $('auth-msg').hidden=true;
+  }catch(err){
+   token='';
+   localStorage.removeItem('jd_session');
+   setSignedOut();
+   const msg=$('auth-msg');msg.hidden=false;msg.className='result bad';
+   msg.textContent='Sign-in succeeded, but the session could not be restored: '+(err.message||'Please sign in again.');
+  }
+ });
  health();if(token){loadWorkspace().catch(()=>setSignedOut());}else setSignedOut();
 })();
 
@@ -597,7 +613,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
    if(!result.token)throw new Error('The server did not return a session token. Please contact support.');
    localStorage.setItem('jd_session',result.token);
    msg.className='result good';msg.textContent='Account authenticated. Loading your workspace…';
-   location.reload();
+   window.dispatchEvent(new CustomEvent('jd:session-established'));
   }catch(err){msg.className='result bad';msg.textContent=err.name==='TimeoutError'?'The server took too long to respond. Please try again.':(err.message||'Could not complete the account request.');}
   finally{if(button)button.disabled=false;}
  });
