@@ -614,6 +614,31 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
    localStorage.setItem('jd_session',result.token);
    msg.className='result good';msg.textContent='Account authenticated. Loading your workspace…';
    window.dispatchEvent(new CustomEvent('jd:session-established'));
+   /* Independent recovery path: don't leave the user behind the auth modal if the main dashboard listener hangs. */
+   const sessionToken=result.token;
+   const verify=async path=>{
+    const check=await fetch(API+path,{method:'GET',mode:'cors',cache:'no-store',headers:{Authorization:'Bearer '+sessionToken},signal:AbortSignal.timeout(12000)});
+    let payload={};try{payload=await check.json()}catch{}
+    if(!check.ok)throw new Error(payload.error||('Workspace check failed ('+check.status+').'));
+    return payload;
+   };
+   try{
+    await verify('/auth/me');
+    const workspace=await verify('/business');
+    const sessionLine=$('session-line'),label=$('workspace-label'),empty=$('workspace-empty');
+    if(sessionLine)sessionLine.textContent='Authenticated';
+    if(label&&workspace.display_name)label.textContent=workspace.display_name;
+    if(empty)empty.hidden=true;
+    const signIn=$('auth-open'),signOut=$('auth-out');
+    if(signIn)signIn.hidden=true;
+    if(signOut)signOut.hidden=false;
+    backdrop.style.display='none';
+    msg.hidden=false;msg.className='result good';
+    msg.textContent='Signed in successfully. Your workspace is open; if a panel is unavailable, its own message will show the issue.';
+   }catch(verifyErr){
+    msg.className='result bad';
+    msg.textContent='The login was accepted, but the session/workspace check failed: '+(verifyErr.message||'Please try again.');
+   }
   }catch(err){msg.className='result bad';msg.textContent=err.name==='TimeoutError'?'The server took too long to respond. Please try again.':(err.message||'Could not complete the account request.');}
   finally{if(button)button.disabled=false;}
  });
