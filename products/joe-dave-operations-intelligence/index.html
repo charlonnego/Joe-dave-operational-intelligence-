@@ -342,13 +342,13 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
 (() => {
  const API='https://joe-dave-operations-api.uchechukwuanuforo.workers.dev';
  const $=id=>document.getElementById(id);
- let token=sessionStorage.getItem('jd_session')||'', business=null, authMode='login', customers=[], invoices=[];
+ let token=localStorage.getItem('jd_session')||'', business=null, authMode='login', customers=[], invoices=[];
  const money=(minor,cur)=>new Intl.NumberFormat(undefined,{style:'currency',currency:cur||'NGN'}).format((Number(minor)||0)/100);
  async function api(path,opts={}) {
   const headers={'Content-Type':'application/json',...(opts.headers||{})}; if(token)headers.Authorization='Bearer '+token;
   let response;try{response=await fetch(API+path,{...opts,headers,mode:'cors'});}catch(e){throw new Error('Cannot reach the API. Check network access and try again.');}
   let data={};try{data=await response.json()}catch{}
-  if(!response.ok){if(response.status===401){token='';sessionStorage.removeItem('jd_session');setSignedOut();}throw new Error(data.error||('Request failed ('+response.status+').'));}
+  if(!response.ok){if(response.status===401){token='';localStorage.removeItem('jd_session');setSignedOut();}throw new Error(data.error||('Request failed ('+response.status+').'));}
   return data;
  }
  function result(id,msg,ok=true){const e=$(id);e.hidden=false;e.className='result '+(ok?'good':'bad');e.textContent=msg;}
@@ -414,8 +414,8 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
  async function loadInvoices(){const d=await api('/invoices');invoices=d.invoices||[];$('invoices-list').innerHTML=invoices.length?invoices.slice(0,30).map(i=>'<div class="metric"><div><b>'+esc(i.invoice_number)+'</b><div class="subtle">'+esc(i.customer_name||'Walk-in')+' · '+esc(i.status)+'</div></div><span>'+money(i.total_minor,business.currency_code)+'<br><small>Outstanding '+money((i.total_minor||0)-(i.paid_minor||0),business.currency_code)+'</small></span></div>').join(''):'<div class="empty"><strong>No invoices yet</strong><span>Create an invoice to see it here.</span></div>';const open=invoices.filter(i=>i.status!=='paid'&&i.status!=='void'&&(i.total_minor||0)>(i.paid_minor||0));$('receipt-invoice').innerHTML='<option value="">Select invoice</option>'+open.map(i=>'<option value="'+esc(i.id)+'">'+esc(i.invoice_number)+' · '+money((i.total_minor||0)-(i.paid_minor||0),business.currency_code)+'</option>').join('');$('document-invoice').innerHTML='<option value="">Select an invoice</option>'+invoices.filter(i=>i.status!== 'void').map(i=>'<option value="'+esc(i.id)+'">'+esc(i.invoice_number)+' · '+esc(i.customer_name||'Walk-in')+'</option>').join('');}
  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
  $('auth-open').addEventListener('click',showAuth);$('auth-close').addEventListener('click',hideAuth);$('mode-login').addEventListener('click',()=>setMode('login'));$('mode-register').addEventListener('click',()=>setMode('register'));$('auth-backdrop').addEventListener('click',e=>{if(e.target===$('auth-backdrop'))hideAuth();});
- $('auth-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target),b={email:f.get('email'),password:f.get('password')};if(authMode==='register')Object.assign(b,{business_name:f.get('business_name'),display_name:f.get('display_name'),currency_code:f.get('currency_code')});const msg=$('auth-msg');msg.hidden=false;msg.className='result';msg.textContent='Securely contacting the server…';try{const d=await api(authMode==='login'?'/auth/login':'/auth/register',{method:'POST',body:JSON.stringify(b)});token=d.token;sessionStorage.setItem('jd_session',token);hideAuth();e.target.reset();await loadWorkspace();result('auth-msg','');}catch(err){msg.className='result bad';msg.textContent=err.message;}});
- $('auth-out').addEventListener('click',async()=>{try{await api('/auth/logout',{method:'POST',body:'{}'});}catch{}token='';sessionStorage.removeItem('jd_session');setSignedOut();});
+ $('auth-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target),b={email:f.get('email'),password:f.get('password')};if(authMode==='register')Object.assign(b,{business_name:f.get('business_name'),display_name:f.get('display_name'),currency_code:f.get('currency_code')});const msg=$('auth-msg');msg.hidden=false;msg.className='result';msg.textContent='Securely contacting the server…';try{const d=await api(authMode==='login'?'/auth/login':'/auth/register',{method:'POST',body:JSON.stringify(b)});token=d.token;localStorage.setItem('jd_session',token);hideAuth();e.target.reset();await loadWorkspace();result('auth-msg','');}catch(err){msg.className='result bad';msg.textContent=err.message;}});
+ $('auth-out').addEventListener('click',async()=>{try{await api('/auth/logout',{method:'POST',body:'{}'});}catch{}token='';localStorage.removeItem('jd_session');setSignedOut();});
  $('customer-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('/customers',{method:'POST',body:JSON.stringify({name:f.get('name'),email:f.get('email'),phone:f.get('phone'),address:f.get('address')})});e.target.reset();result('customer-msg','Customer saved to your workspace.');await loadCustomers();}catch(err){result('customer-msg',err.message,false);}});
  $('customers-refresh').addEventListener('click',()=>loadCustomers().catch(e=>result('customer-msg',e.message,false)));
  $('invoice-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target);try{const qty=Number(f.get('quantity')),price=Math.round(Number(f.get('unit_price'))*100),tax=Number(f.get('tax_rate')||0);const d=await api('/invoices',{method:'POST',body:JSON.stringify({customer_id:f.get('customer_id')||null,due_date:f.get('due_date')||null,notes:f.get('notes'),lines:[{description:f.get('description'),quantity:qty,unit_price_minor:price,tax_rate:tax}]})});result('invoice-msg','Created '+d.invoice_number+' · Total '+money(d.total_minor,business.currency_code));await loadInvoices();await loadWorkspace();}catch(err){result('invoice-msg',err.message,false);}});
@@ -595,7 +595,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
    let result={};try{result=await response.json();}catch{}
    if(!response.ok)throw new Error(result.error||('Account request failed ('+response.status+').'));
    if(!result.token)throw new Error('The server did not return a session token. Please contact support.');
-   sessionStorage.setItem('jd_session',result.token);
+   localStorage.setItem('jd_session',result.token);
    msg.className='result good';msg.textContent='Account authenticated. Loading your workspace…';
    location.reload();
   }catch(err){msg.className='result bad';msg.textContent=err.name==='TimeoutError'?'The server took too long to respond. Please try again.':(err.message||'Could not complete the account request.');}
