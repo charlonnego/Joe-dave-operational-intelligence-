@@ -7,7 +7,7 @@ const path = "products/joe-dave-operations-intelligence/index.html";
 const html = fs.readFileSync(path, "utf8");
 
 test("all inline browser scripts parse as JavaScript modules", () => {
-  const scripts = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(m => m[1]).filter(s => s.trim());
+  const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(s => s.trim());
   assert.ok(scripts.length >= 2, "expected the main app and API integration scripts");
   for (const [index, script] of scripts.entries()) {
     const result = spawnSync(process.execPath, ["--input-type=module", "--check"], { input: script, encoding: "utf8" });
@@ -65,9 +65,9 @@ test("all operational modules have matching live UI roots and authenticated Work
 
 test("operational modules use the same persistent authenticated session as the main app", () => {
   const modules = fs.readFileSync("products/joe-dave-operations-intelligence/operations-modules.js", "utf8");
-  assert.match(modules, /function getToken\\(\\)\\{return localStorage\\.getItem\\('jd_session'\\)/);
-  assert.match(modules, /Authorization:'Bearer '\\+t/);
-  assert.match(modules, /function localMode\\(\\)\\{return false\\}/);
-  assert.doesNotMatch(modules, /function localRequest\\(/, "operational workflows must not silently write simulated device-only records");
+  assert.ok(modules.includes("function getToken(){return localStorage.getItem('jd_session')"), "operational modules must read the main app's persistent session");
+  assert.ok(modules.includes("Authorization:'Bearer '+t"), "operational requests must send the bearer session token");
+  assert.ok(modules.includes("function localMode(){return false}"), "operational workflows must not fall back to local simulation");
+  assert.doesNotMatch(modules, /function localRequest\(/, "operational workflows must not silently write simulated device-only records");
   assert.doesNotMatch(modules, /LOCAL-DRAFT-|LOCAL-PO-|LOCAL-SO-/, "operational IDs must come from the live API");
 });
