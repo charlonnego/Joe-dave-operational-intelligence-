@@ -1,0 +1,31 @@
+name: Joe & Dave validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare/**"
+      - "products/joe-dave-operations-intelligence/**"
+      - ".github/workflows/joe-dave-operations.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "cloudflare/**"
+      - "products/joe-dave-operations-intelligence/**"
+      - ".github/workflows/joe-dave-operations.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check Worker and browser module syntax
+        run: |
+          node --check cloudflare/worker.js
+          node --check products/joe-dave-operations-intelligence/operations-modules.js
+      - name: Run source, navigation, and API integration tests
+        run: node --test cloudflare/tests/*.test.mjs
