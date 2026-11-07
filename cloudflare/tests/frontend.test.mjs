@@ -32,3 +32,26 @@ test("branding, professional document export and data analysis controls exist", 
     assert.ok(html.includes(fragment), "missing document/analytics feature: " + fragment);
   }
 });
+
+
+test("every visible page has navigation and there are no orphan placeholder sections", () => {
+  const nav = [...html.matchAll(/data-page="([^"]+)"/g)].map(m => m[1]);
+  const pages = [...html.matchAll(/id="page-([^"]+)"/g)].map(m => m[1]);
+  assert.deepEqual(pages.filter(page => !nav.includes(page)), []);
+  assert.ok(!html.includes('id="page-operations"'), "obsolete planned-workflows page must not ship");
+});
+
+test("all operational modules have matching live UI roots and authenticated Worker definitions", () => {
+  const modulePath = "products/joe-dave-operations-intelligence/operations-modules.js";
+  const workerPath = "cloudflare/worker.js";
+  const modules = fs.readFileSync(modulePath, "utf8");
+  const worker = fs.readFileSync(workerPath, "utf8");
+  const groups = [...modules.matchAll(/'([^']+)'\\s*:\\s*\\{\\s*title:/g)].map(m => m[1]).sort();
+  const definitions = [...worker.matchAll(/"([^"]+\\/[^"]+)":\\{table:/g)].map(m => m[1]).sort();
+  assert.equal(groups.length, 28, "expected 28 operational resource screens");
+  assert.deepEqual(groups, definitions, "every UI resource must have a server-side Worker definition");
+  for (const page of ["ops-inventory", "ops-selling", "ops-buying", "ops-hr", "ops-manufacturing", "ops-projects", "ops-support"]) {
+    assert.ok(html.includes('id="page-' + page + '"'), "missing visible page " + page);
+    assert.ok(html.includes('id="' + page + '-root"'), "missing live module root " + page);
+  }
+});
