@@ -8,7 +8,7 @@ const json=(data,status=200,origin)=>new Response(JSON.stringify(data),{status,h
 const uid=()=>crypto.randomUUID();
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 const digest=async s=>hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)));
-const PASSWORD_ITERATIONS=210000;
+const PASSWORD_ITERATIONS=100000;
 async function hashPassword(password,saltHex,iterations=PASSWORD_ITERATIONS){
  const salt=saltHex?Uint8Array.from(saltHex.match(/../g).map(x=>parseInt(x,16))):crypto.getRandomValues(new Uint8Array(16));
  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
