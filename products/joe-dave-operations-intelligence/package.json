@@ -1,0 +1,18 @@
+{
+  "name": "joe-dave-operations-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android wrapper for Joe&dave Operations Intelligence",
+  "scripts": {
+    "android:add": "cap add android",
+    "android:sync": "cap sync android",
+    "android:build": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0"
+  }
+}
