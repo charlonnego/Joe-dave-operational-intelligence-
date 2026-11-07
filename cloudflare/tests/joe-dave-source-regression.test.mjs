@@ -23,10 +23,12 @@ test('HR claims are shared only with HR and accounting roles in the API role gat
   assert.match(worker, /if\(group==="hr"\)return sub==="claims"\?\["hr","accountant"\]\.includes\(role\):role==="hr";/);
 });
 
-test('operational UI defaults to live API rather than silently saving only on the device', () => {
+test('operational UI always uses the authenticated live API and never local-only records', () => {
   const ui = read('../../products/joe-dave-operations-intelligence/operations-modules.js');
-  assert.match(ui, /function localMode\(\)\{return localStorage\.getItem\(LOCAL_MODE_KEY\)==='local'\}/);
-  assert.match(ui, /LOCAL MODE · DEVICE ONLY/);
+  assert.match(ui, /function localMode\(\)\{return false\}/);
+  assert.match(ui, /'Authorization':'Bearer '\+t/);
+  assert.doesNotMatch(ui, /function localRequest\(/);
+  assert.doesNotMatch(ui, /LOCAL MODE|LOCAL-DRAFT-|LOCAL-PO-|LOCAL-SO-/);
 });
 
 test('responsive shell exposes an accessible collapsible module menu and phone/tablet/large-display layouts', () => {
