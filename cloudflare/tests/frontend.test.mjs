@@ -33,6 +33,16 @@ test("branding, professional document export and data analysis controls exist", 
   }
 });
 
+test("bank statement CSV import validates and posts rows through the live banking API", () => {
+  assert.ok(html.includes('id="bank-csv-form"'));
+  assert.ok(html.includes('id="bank-csv-file"'));
+  assert.ok(html.includes('id="bank-csv-preview"'));
+  const script = html.slice(html.indexOf("function parseCSV(text)"));
+  assert.ok(script.includes("function parseBankStatementCSV(raw)"));
+  assert.ok(script.includes("api('/bank-transactions/import'"));
+  assert.ok(script.includes("bank_account_id:accountId"));
+});
+
 test("every visible page has navigation and there are no orphan placeholder sections", () => {
   const nav = [...html.matchAll(/data-page="([^"]+)"/g)].map(m => m[1]);
   const pages = [...html.matchAll(/id="page-([^"]+)"/g)].map(m => m[1]);
