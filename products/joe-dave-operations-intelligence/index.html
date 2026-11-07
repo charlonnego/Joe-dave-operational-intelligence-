@@ -382,7 +382,7 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
 
 <script>
 (() => {
- const API='https://joe-dave-operations-api.uchechukwuanuforo.workers.dev';
+ const API='/api';
  const $=id=>document.getElementById(id);
  let token=localStorage.getItem('jd_session')||'', business=null, authMode='login', customers=[], invoices=[];
  const money=(minor,cur)=>new Intl.NumberFormat(undefined,{style:'currency',currency:cur||'NGN'}).format((Number(minor)||0)/100);
@@ -390,7 +390,7 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
   const headers={'Content-Type':'application/json',...(opts.headers||{})}; if(token)headers.Authorization='Bearer '+token;
   let response;try{response=await fetch(API+path,{...opts,headers,mode:'cors'});}catch(e){throw new Error('Cannot reach the API. Check network access and try again.');}
   let data={};try{data=await response.json()}catch{}
-  if(!response.ok){if(response.status===401){token='';localStorage.removeItem('jd_session');setSignedOut();}throw new Error(data.error||('Request failed ('+response.status+').'));}
+  if(!response.ok){if(response.status===401){token='';localStorage.removeItem('jd_session');setSignedOut();}const detail=data.error||('Request failed ('+response.status+').');throw new Error(detail+(data.reference?' [Reference: '+data.reference+']':''));}
   return data;
  }
  function result(id,msg,ok=true){const e=$(id);e.hidden=false;e.className='result '+(ok?'good':'bad');e.textContent=msg;}
