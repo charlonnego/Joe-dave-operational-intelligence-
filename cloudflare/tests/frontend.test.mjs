@@ -63,6 +63,25 @@ test("all operational modules have matching live UI roots and authenticated Work
   }
 });
 
+test("every operational form field is accepted by its authenticated Worker resource", () => {
+  const modules = fs.readFileSync("products/joe-dave-operations-intelligence/operations-modules.js", "utf8");
+  const worker = fs.readFileSync("cloudflare/worker.js", "utf8");
+  const uiBlock = modules.match(/const defs=\{([\s\S]*?)\n\};/);
+  const apiBlock = worker.match(/const opsDefs=\{([\s\S]*?)\n  \};/);
+  assert.ok(uiBlock && apiBlock, "module maps must remain parseable");
+  const uiDefs = [...uiBlock[1].matchAll(/'([^']+)':\{title:'[^']+',fields:\[([\s\S]*?)\]\}/g)];
+  const apiDefs = new Map([...apiBlock[1].matchAll(/"([^"]+)":\{table:"[^"]+",key:"[^"]+",fields:\[([^\]]*)\]/g)]
+    .map(m => [m[1], new Set([...m[2].matchAll(/"([^"]+)"/g)].map(x => x[1]))]));
+  assert.equal(uiDefs.length, 28);
+  for (const match of uiDefs) {
+    const resource = match[1], allowed = apiDefs.get(resource);
+    assert.ok(allowed, "missing API definition for " + resource);
+    for (const field of [...match[2].matchAll(/\['([^']+)'/g)].map(x => x[1])) {
+      assert.ok(allowed.has(field), resource + " form field is not accepted by the API: " + field);
+    }
+  }
+});
+
 test("operational modules use the same persistent authenticated session as the main app", () => {
   const modules = fs.readFileSync("products/joe-dave-operations-intelligence/operations-modules.js", "utf8");
   assert.ok(modules.includes("function getToken(){return localStorage.getItem('jd_session')"), "operational modules must read the main app's persistent session");
