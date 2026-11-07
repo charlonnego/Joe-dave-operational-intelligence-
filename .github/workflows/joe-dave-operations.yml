@@ -29,3 +29,7 @@ jobs:
           node --check products/joe-dave-operations-intelligence/operations-modules.js
       - name: Run source, navigation, and API integration tests
         run: node --test cloudflare/tests/*.test.mjs
+      - name: Verify deployed API and D1 schema health
+        run: |
+          response="$(curl --fail --silent --show-error --max-time 15 https://joe-dave-operations-api.uchechukwuanuforo.workers.dev/health)"
+          node -e 'const d=JSON.parse(process.argv[1]); if(d.ok!==true || d.database!=="connected" || Number(d.schema_tables)<60) { console.error(d); process.exit(1); } console.log("API and D1 healthy:", d.schema_tables, "tables");' "$response"
