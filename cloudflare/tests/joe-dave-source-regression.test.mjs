@@ -12,6 +12,12 @@ test('membership migration permits HR without weakening existing roles', () => {
   assert.match(migration, /jd_membership_keep_owner_before_update/);
 });
 
+test('password hashing uses the documented work factor and upgrades older hashes after successful login', () => {
+  const worker = read('../worker.js');
+  assert.match(worker, /const PASSWORD_ITERATIONS=210000;/);
+  assert.match(worker, /UPDATE jd_users SET password_hash=\?/);
+});
+
 test('HR claims are shared only with HR and accounting roles in the API role gate', () => {
   const worker = read('../worker.js');
   assert.match(worker, /if\(group==="hr"\)return sub==="claims"\?\["hr","accountant"\]\.includes\(role\):role==="hr";/);
