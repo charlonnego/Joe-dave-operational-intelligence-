@@ -456,7 +456,35 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
  async function loadInvoices(){const d=await api('/invoices');invoices=d.invoices||[];$('invoices-list').innerHTML=invoices.length?invoices.slice(0,30).map(i=>'<div class="metric"><div><b>'+esc(i.invoice_number)+'</b><div class="subtle">'+esc(i.customer_name||'Walk-in')+' · '+esc(i.status)+'</div></div><span>'+money(i.total_minor,business.currency_code)+'<br><small>Outstanding '+money((i.total_minor||0)-(i.paid_minor||0),business.currency_code)+'</small></span></div>').join(''):'<div class="empty"><strong>No invoices yet</strong><span>Create an invoice to see it here.</span></div>';const open=invoices.filter(i=>i.status!=='paid'&&i.status!=='void'&&(i.total_minor||0)>(i.paid_minor||0));$('receipt-invoice').innerHTML='<option value="">Select invoice</option>'+open.map(i=>'<option value="'+esc(i.id)+'">'+esc(i.invoice_number)+' · '+money((i.total_minor||0)-(i.paid_minor||0),business.currency_code)+'</option>').join('');$('document-invoice').innerHTML='<option value="">Select an invoice</option>'+invoices.filter(i=>i.status!== 'void').map(i=>'<option value="'+esc(i.id)+'">'+esc(i.invoice_number)+' · '+esc(i.customer_name||'Walk-in')+'</option>').join('');}
  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
  $('auth-open').addEventListener('click',showAuth);$('auth-close').addEventListener('click',hideAuth);$('mode-login').addEventListener('click',()=>setMode('login'));$('mode-register').addEventListener('click',()=>setMode('register'));$('auth-backdrop').addEventListener('click',e=>{if(e.target===$('auth-backdrop'))hideAuth();});
- $('auth-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target),b={email:f.get('email'),password:f.get('password')};if(authMode==='register')Object.assign(b,{business_name:f.get('business_name'),display_name:f.get('display_name'),currency_code:f.get('currency_code')});const msg=$('auth-msg');msg.hidden=false;msg.className='result';msg.textContent='Securely contacting the server…';try{const d=await api(authMode==='login'?'/auth/login':'/auth/register',{method:'POST',body:JSON.stringify(b)});token=d.token;localStorage.setItem('jd_session',token);hideAuth();e.target.reset();await loadWorkspace();result('auth-msg','');}catch(err){msg.className='result bad';msg.textContent=err.message;}});
+ $('auth-form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const form=e.currentTarget,fields=new FormData(form);
+  const body={email:String(fields.get('email')||'').trim(),password:String(fields.get('password')||'')};
+  if(authMode==='register')Object.assign(body,{business_name:String(fields.get('business_name')||'').trim(),display_name:String(fields.get('display_name')||'').trim(),currency_code:String(fields.get('currency_code')||'NGN')});
+  const msg=$('auth-msg'),submit=$('auth-submit');
+  msg.hidden=false;msg.className='result';msg.textContent='Connecting securely and verifying your workspace…';
+  if(submit)submit.disabled=true;
+  try{
+   const response=await api(authMode==='login'?'/auth/login':'/auth/register',{method:'POST',body:JSON.stringify(body)});
+   if(!response||!response.token)throw new Error('The account service did not return a valid session. Please try again.');
+   token=response.token;
+   localStorage.setItem('jd_session',token);
+   msg.textContent='Credentials accepted. Checking workspace access…';
+   await api('/auth/me');
+   business=await api('/business');
+   await loadWorkspace();
+   form.reset();
+   hideAuth();
+   msg.hidden=true;
+   result('workspace-load-msg','Signed in successfully. Your workspace is ready.',true);
+  }catch(err){
+   token='';
+   localStorage.removeItem('jd_session');
+   setSignedOut();
+   msg.hidden=false;msg.className='result bad';
+   msg.textContent=err&&err.message?err.message:'Sign-in could not be completed. Please try again.';
+  }finally{if(submit)submit.disabled=false;}
+ });
  $('auth-out').addEventListener('click',async()=>{try{await api('/auth/logout',{method:'POST',body:'{}'});}catch{}token='';localStorage.removeItem('jd_session');setSignedOut();});
  $('customer-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('/customers',{method:'POST',body:JSON.stringify({name:f.get('name'),email:f.get('email'),phone:f.get('phone'),address:f.get('address')})});e.target.reset();result('customer-msg','Customer saved to your workspace.');await loadCustomers();}catch(err){result('customer-msg',err.message,false);}});
  $('customers-refresh').addEventListener('click',()=>loadCustomers().catch(e=>result('customer-msg',e.message,false)));
@@ -627,77 +655,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
 })();
 </script>
 
-<script>
-/* Standalone auth fallback: keeps sign-in and registration usable if the main app script fails. */
-(function(){
- const API='https://joe-dave-operations-api.uchechukwuanuforo.workers.dev';
- const $=id=>document.getElementById(id);
- const replace=(id,fn)=>{const old=$(id);if(!old)return null;const fresh=old.cloneNode(true);old.replaceWith(fresh);fresh.addEventListener('click',fn);return fresh;};
- const backdrop=$('auth-backdrop'), form=$('auth-form'), msg=$('auth-msg');
- if(!backdrop||!form||!msg)return;
- let mode='login';
- const setMode=m=>{
-  mode=m;
-  const title=$('auth-title'),submit=$('auth-submit'),fields=$('register-fields');
-  if(title)title.textContent=m==='login'?'Sign in':'Create your workspace';
-  if(submit)submit.textContent=m==='login'?'Sign in':'Create account';
-  if(fields)fields.style.display=m==='login'?'none':'grid';
-  const name=form.elements.business_name;
-  if(name)name.required=m==='register';
-  const pass=form.elements.password;
-  if(pass){pass.minLength=m==='register'?12:0;pass.placeholder=m==='register'?'Password (minimum 12 characters)':'Password';pass.autocomplete=m==='login'?'current-password':'new-password';}
-  msg.hidden=true;
- };
- replace('auth-open',()=>{backdrop.style.display='flex';setMode('login');});
- replace('auth-close',()=>{backdrop.style.display='none';});
- replace('mode-login',()=>setMode('login'));
- replace('mode-register',()=>setMode('register'));
- backdrop.addEventListener('click',e=>{if(e.target===backdrop)backdrop.style.display='none';});
- const freshForm=form.cloneNode(true);form.replaceWith(freshForm);
- freshForm.addEventListener('submit',async e=>{
-  e.preventDefault();
-  const data=new FormData(freshForm),body={email:String(data.get('email')||'').trim(),password:String(data.get('password')||'')};
-  if(mode==='register')Object.assign(body,{business_name:String(data.get('business_name')||'').trim(),display_name:String(data.get('display_name')||'').trim(),currency_code:String(data.get('currency_code')||'NGN')});
-  msg.hidden=false;msg.className='result';msg.textContent='Contacting the secure account service…';
-  const button=$('auth-submit');if(button)button.disabled=true;
-  try{
-   const response=await fetch(API+(mode==='login'?'/auth/login':'/auth/register'),{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
-   let result={};try{result=await response.json();}catch{}
-   if(!response.ok)throw new Error(result.error||('Account request failed ('+response.status+').'));
-   if(!result.token)throw new Error('The server did not return a session token. Please contact support.');
-   localStorage.setItem('jd_session',result.token);
-   msg.className='result good';msg.textContent='Account authenticated. Loading your workspace…';
-   window.dispatchEvent(new CustomEvent('jd:session-established'));
-   /* Independent recovery path: don't leave the user behind the auth modal if the main dashboard listener hangs. */
-   const sessionToken=result.token;
-   const verify=async path=>{
-    const check=await fetch(API+path,{method:'GET',mode:'cors',cache:'no-store',headers:{Authorization:'Bearer '+sessionToken},signal:AbortSignal.timeout(12000)});
-    let payload={};try{payload=await check.json()}catch{}
-    if(!check.ok)throw new Error(payload.error||('Workspace check failed ('+check.status+').'));
-    return payload;
-   };
-   try{
-    await verify('/auth/me');
-    const workspace=await verify('/business');
-    const sessionLine=$('session-line'),label=$('workspace-label'),empty=$('workspace-empty');
-    if(sessionLine)sessionLine.textContent='Authenticated';
-    if(label&&workspace.display_name)label.textContent=workspace.display_name;
-    if(empty)empty.hidden=true;
-    const signIn=$('auth-open'),signOut=$('auth-out');
-    if(signIn)signIn.hidden=true;
-    if(signOut)signOut.hidden=false;
-    backdrop.style.display='none';
-    msg.hidden=false;msg.className='result good';
-    msg.textContent='Signed in successfully. Your workspace is open; if a panel is unavailable, its own message will show the issue.';
-   }catch(verifyErr){
-    msg.className='result bad';
-    msg.textContent='The login was accepted, but the session/workspace check failed: '+(verifyErr.message||'Please try again.');
-   }
-  }catch(err){msg.className='result bad';msg.textContent=err.name==='TimeoutError'?'The server took too long to respond. Please try again.':(err.message||'Could not complete the account request.');}
-  finally{if(button)button.disabled=false;}
- });
-})();
-</script>
+
 <script>
 /* Responsive navigation belongs to the page, never inside the printable invoice document. */
 (() => {
