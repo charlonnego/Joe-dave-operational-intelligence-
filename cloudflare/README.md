@@ -3,8 +3,8 @@
 Independent custom application. Frappe/ERPNext is not a runtime dependency.
 
 ## Standalone application source
-- Frontend entry point: `cloudflare/site/index.html` (the product source, not an ERPNext demo page).
-- Cloudflare Pages build output directory: `cloudflare/site`.
+- Frontend entry point: `products/joe-dave-operations-intelligence/index.html` (the deployed product source, not an ERPNext demo page).
+- Cloudflare Pages root/output directory: `products/joe-dave-operations-intelligence` (this matches the connected production Pages project).
 - The web application uses the dedicated Worker API and D1 database below; it does not import, call, or require an ERPNext/Frappe runtime.
 - Keep all customer operations and transaction data in the authenticated API/database. Empty states must remain empty; never seed fake business transactions.
 
@@ -22,6 +22,7 @@ Independent custom application. Frappe/ERPNext is not a runtime dependency.
 - `d1/migrations/0002_accounting_inventory_controls.sql`: suppliers, expenses, purchase orders, journal ledger, auth attempts, stock/receipt/receiving guards
 - `d1/migrations/0003_payables_periods_banking.sql`: supplier bills/payments, period locks and bank reconciliation tables/guards
 - `d1/migrations/0004_branding_templates.sql`: business contact details, compact logo data URL, brand colour and invoice/receipt template preferences
+- `d1/migrations/0006_hr_membership_role.sql`: adds the restricted HR workspace role while preserving existing memberships and owner-protection triggers
 - `tests/smoke.mjs`: live health/auth/CORS smoke tests
 - `tests/frontend.test.mjs`: inline JS syntax, navigation and API wiring checks against `site/index.html`
 - `../.github/workflows/cloudflare-api-smoke.yml`: automated checks
