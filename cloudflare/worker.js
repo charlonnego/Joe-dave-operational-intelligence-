@@ -8,7 +8,7 @@ const json=(data,status=200,origin)=>new Response(JSON.stringify(data),{status,h
 const uid=()=>crypto.randomUUID();
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 const digest=async s=>hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)));
-const PASSWORD_ITERATIONS=100000;
+const PASSWORD_ITERATIONS=210000;
 async function hashPassword(password,saltHex,iterations=PASSWORD_ITERATIONS){
  const salt=saltHex?Uint8Array.from(saltHex.match(/../g).map(x=>parseInt(x,16))):crypto.getRandomValues(new Uint8Array(16));
  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
@@ -91,6 +91,7 @@ export default {async fetch(req,env){
    if((recent?.n||0)>=12)return json({error:"Too many failed sign-in attempts. Try again in 15 minutes."},429,origin);
    const u=await env.DB.prepare("SELECT id,email,password_hash FROM jd_users WHERE email=?").bind(email).first();
    if(!u||!(await verifyPassword(b.password,u.password_hash))){await env.DB.prepare("INSERT INTO jd_auth_attempts(id,ip_hash,email_hash,success) VALUES(?,?,?,0)").bind(uid(),ip,eh).run();return json({error:"Invalid email or password."},401,origin);}
+   if(Number(String(u.password_hash||"").split("$")[1])<PASSWORD_ITERATIONS){const upgraded=await hashPassword(b.password);await env.DB.prepare("UPDATE jd_users SET password_hash=? WHERE id=? AND password_hash=?").bind(upgraded.stored,u.id,u.password_hash).run();}
    const membership=await env.DB.prepare("SELECT business_id,role FROM jd_business_memberships WHERE user_id=? ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,created_at LIMIT 1").bind(u.id).first();const business=membership?await ownedBusiness(env,u.id,membership.business_id):null;if(!business)return json({error:"No business workspace is associated with this account."},409,origin);
    const token=hex(crypto.getRandomValues(new Uint8Array(32)));await env.DB.batch([env.DB.prepare("INSERT INTO jd_sessions(token_hash,user_id,business_id,expires_at) VALUES(?,?,?,?)").bind(await digest(token),u.id,business.id,new Date(Date.now()+7*86400000).toISOString()),env.DB.prepare("INSERT INTO jd_auth_attempts(id,ip_hash,email_hash,success) VALUES(?,?,?,1)").bind(uid(),ip,eh)]);
    return json({token,user:{id:u.id,email:u.email},business:{id:business.id,display_name:business.display_name,currency_code:business.currency_code}},200,origin);
