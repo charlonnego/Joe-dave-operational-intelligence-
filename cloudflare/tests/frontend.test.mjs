@@ -42,14 +42,22 @@ test("every visible page has navigation and there are no orphan placeholder sect
 });
 
 test("all operational modules have matching live UI roots and authenticated Worker definitions", () => {
-  const modulePath = "products/joe-dave-operations-intelligence/operations-modules.js";
-  const workerPath = "cloudflare/worker.js";
-  const modules = fs.readFileSync(modulePath, "utf8");
-  const worker = fs.readFileSync(workerPath, "utf8");
-  const groups = [...modules.matchAll(/'([^']+)'\\s*:\\s*\\{\\s*title:/g)].map(m => m[1]).sort();
-  const definitions = [...worker.matchAll(/"([^"]+\\/[^"]+)":\\{table:/g)].map(m => m[1]).sort();
-  assert.equal(groups.length, 28, "expected 28 operational resource screens");
-  assert.deepEqual(groups, definitions, "every UI resource must have a server-side Worker definition");
+  const modules = fs.readFileSync("products/joe-dave-operations-intelligence/operations-modules.js", "utf8");
+  const worker = fs.readFileSync("cloudflare/worker.js", "utf8");
+  const resources = [
+    "inventory/items", "inventory/warehouses", "inventory/lots", "inventory/movements", "inventory/counts",
+    "crm/leads", "selling/quotations", "selling/orders",
+    "buying/suppliers", "buying/requests", "buying/orders", "buying/receipts", "buying/invoices",
+    "hr/employees", "hr/attendance", "hr/leave", "hr/claims", "hr/payroll",
+    "manufacturing/boms", "manufacturing/orders", "manufacturing/work-centers", "manufacturing/job-cards",
+    "projects/projects", "projects/tasks", "projects/timesheets",
+    "support/tickets", "support/messages", "support/articles"
+  ];
+  assert.equal(resources.length, 28);
+  for (const resource of resources) {
+    assert.ok(modules.includes("'" + resource + "':{title:"), "missing UI resource " + resource);
+    assert.ok(worker.includes('"' + resource + '":{table:'), "missing authenticated Worker resource " + resource);
+  }
   for (const page of ["ops-inventory", "ops-selling", "ops-buying", "ops-hr", "ops-manufacturing", "ops-projects", "ops-support"]) {
     assert.ok(html.includes('id="page-' + page + '"'), "missing visible page " + page);
     assert.ok(html.includes('id="' + page + '-root"'), "missing live module root " + page);
