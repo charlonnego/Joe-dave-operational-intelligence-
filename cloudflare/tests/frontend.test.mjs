@@ -66,7 +66,7 @@ test("all operational modules have matching live UI roots and authenticated Work
 test("operational modules use the same persistent authenticated session as the main app", () => {
   const modules = fs.readFileSync("products/joe-dave-operations-intelligence/operations-modules.js", "utf8");
   assert.ok(modules.includes("function getToken(){return localStorage.getItem('jd_session')"), "operational modules must read the main app's persistent session");
-  assert.ok(modules.includes("Authorization:'Bearer '+t"), "operational requests must send the bearer session token");
+  assert.ok(modules.includes("'Authorization':'Bearer '+t"), "operational requests must send the bearer session token");
   assert.ok(modules.includes("function localMode(){return false}"), "operational workflows must not fall back to local simulation");
   assert.doesNotMatch(modules, /function localRequest\(/, "operational workflows must not silently write simulated device-only records");
   assert.doesNotMatch(modules, /LOCAL-DRAFT-|LOCAL-PO-|LOCAL-SO-/, "operational IDs must come from the live API");
