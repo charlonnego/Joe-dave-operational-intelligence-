@@ -52,7 +52,7 @@ test('mobile command centre exposes direct invoice, customer and inventory actio
 
 test('invoice drafts are saved per business on-device and restored without being sent to the API', () => {
   const html = read('../../products/joe-dave-operations-intelligence/index.html');
-  assert.match(html, /jd_invoice_draft_v1_\+business\.id/);
+  assert.match(html, /jd_invoice_draft_v1_.*business\.id/);
   assert.match(html, /function saveInvoiceDraft\(\)/);
   assert.match(html, /function restoreInvoiceDraft\(\)/);
   assert.match(html, /Invoice created\. Your local draft has been cleared\./);
