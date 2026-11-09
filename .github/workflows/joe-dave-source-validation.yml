@@ -1,0 +1,30 @@
+name: Joe&dave source validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare/**"
+      - "products/joe-dave-operations-intelligence/**"
+      - "docs/**"
+      - ".github/workflows/joe-dave-source-validation.yml"
+  pull_request:
+    paths:
+      - "cloudflare/**"
+      - "products/joe-dave-operations-intelligence/**"
+      - "docs/**"
+      - ".github/workflows/joe-dave-source-validation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate Worker JavaScript syntax
+        run: node --input-type=module --check < cloudflare/worker.js
+      - name: Run Joe&dave source regression tests
+        run: node --test cloudflare/tests/joe-dave-source-regression.test.mjs
