@@ -100,5 +100,5 @@ test('first-run onboarding highlights the next unfinished real-data step', () =>
   assert.match(html, /id="jd-onboarding-next"/);
   assert.match(html, /Recommended next step/);
   assert.match(html, /Setup complete/);
-  assert.match(html, /Your progress is calculated from records saved to your workspace/);
+  assert.match(html, /Nothing is pre-filled with demo data/);
 });
