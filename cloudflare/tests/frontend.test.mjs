@@ -6,6 +6,19 @@ import { spawnSync } from "node:child_process";
 const path = "products/joe-dave-operations-intelligence/index.html";
 const html = fs.readFileSync(path, "utf8");
 
+
+test("new workspace onboarding reflects saved business, customer, invoice and receipt records", () => {
+  for (const fragment of ['id="jd-onboarding"', 'id="jd-onboarding-steps"', 'function renderOnboarding()', "customers.length>0", "invoices.length>0", "receipts.length>0"]) {
+    assert.ok(html.includes(fragment), "missing guided onboarding behavior: " + fragment);
+  }
+});
+
+test("main app keeps the authenticated session across app restarts and clears it on expiry or sign-out", () => {
+  assert.ok(html.includes("localStorage.getItem('jd_session')"));
+  assert.ok(html.includes("localStorage.setItem('jd_session',token)"));
+  assert.ok(html.includes("localStorage.removeItem('jd_session')"));
+});
+
 test("all inline browser scripts parse as JavaScript modules", () => {
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(s => s.trim());
   assert.ok(scripts.length >= 2, "expected the main app and API integration scripts");
