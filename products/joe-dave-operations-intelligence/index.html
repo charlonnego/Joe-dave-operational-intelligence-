@@ -192,6 +192,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media(max-width:480px){.onboarding-steps{grid-template-columns:1fr}.onboarding-step p{min-height:0}}
 @media(prefers-reduced-motion:reduce){.onboarding-progress>span{transition:none}}
 
+/* Guided onboarding: one clear next action, then a compact progress path */
+.onboarding-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.onboarding-next{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding:20px;margin:16px 0;border:1px solid #bfdbfe;border-radius:16px;background:linear-gradient(120deg,#eff6ff,#fff)}
+.onboarding-next .next-kicker{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;font-weight:850;color:#2563eb}
+.onboarding-next h3{margin:5px 0;font-size:19px;color:#172033}
+.onboarding-next p{font-size:13px;color:#64748b}
+.onboarding-next .button{min-width:145px}
+.onboarding-step{background:#fff!important;border-color:#dbe5f1!important}
+.onboarding-step.done{background:#f0fdf4!important;border-color:#bbf7d0!important}
+.onboarding-step.current{border-color:#60a5fa!important;box-shadow:0 0 0 2px #dbeafe}
+.onboarding-step .step-state{color:#2563eb!important}
+@media(max-width:560px){.onboarding-heading{display:grid}.onboarding-next{grid-template-columns:1fr}.onboarding-next .button{width:100%}}
 /* Phone-first invoice line editor and persistent bottom navigation */
 .invoice-line label{display:grid;gap:5px;min-width:0}
 .invoice-line input{width:100%;min-width:0}
@@ -262,9 +274,9 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
     <div class="grid">
       <article class="card span-12"><div class="card-head"><h2>Quick access</h2><span class="tag">Workspace tools</span></div><div class="grid"><div class="span-4"><button class="button secondary" data-go="branding" style="width:100%;white-space:normal">✦ Brand, logo & templates</button><p class="subtle" style="margin-top:8px">Upload your logo, set business details and choose invoice/receipt designs.</p></div><div class="span-4"><button class="button secondary" data-go="invoices" style="width:100%;white-space:normal">▤ Create & export invoices</button><p class="subtle" style="margin-top:8px">Create invoices, then export a selected invoice or receipt to PDF or JPG.</p></div><div class="span-4"><button class="button secondary" data-go="analytics" style="width:100%;white-space:normal">▥ Open data analysis</button><p class="subtle" style="margin-top:8px">Review 12-month invoicing, collections, expenses, margins and customer trends.</p></div></div></article>
       <article class="card span-12" id="jd-onboarding" hidden>
-        <div class="card-head"><div><div class="eyebrow">A simple first run</div><h2 style="margin-top:4px">Get your business workspace ready</h2></div><span class="tag" id="jd-onboarding-count">0 of 4 complete</span></div>
-        <p class="subtle">Follow these steps using your own business information. Your progress is calculated from records saved to your workspace.</p>
+        <div class="onboarding-heading"><div><div class="eyebrow">Your guided setup</div><h2 style="margin-top:4px">Build a useful workspace, one step at a time</h2><p class="subtle">A short, practical path using your real business records. Nothing is pre-filled with demo data.</p></div><span class="tag" id="jd-onboarding-count">0 of 4 complete</span></div>
         <div class="onboarding-progress" role="progressbar" aria-label="Workspace setup progress" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" id="jd-onboarding-progress"><span id="jd-onboarding-bar"></span></div>
+        <div id="jd-onboarding-next" class="onboarding-next"></div>
         <div class="onboarding-steps" id="jd-onboarding-steps"></div>
       </article>
       <div id="workspace-load-msg" class="result" hidden></div>
@@ -676,18 +688,21 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
  function renderOnboarding(){
   const panel=$('jd-onboarding');if(!panel)return;
   if(!business){panel.hidden=true;return;}
+  panel.hidden=false;
   const steps=[
-   {title:'Confirm business profile',description:'Check your business name, contact details and document branding.',done:!!(business.display_name&&business.currency_code),page:'branding',action:'Review profile'},
-   {title:'Add your first customer',description:'Save a customer so you can select them on an invoice.',done:customers.length>0,page:'customers',action:'Add customer'},
-   {title:'Create your first invoice',description:'Issue an invoice for a real product or service.',done:invoices.length>0,page:'invoices',action:'Create invoice'},
-   {title:'Record your first receipt',description:'Record money received against an issued invoice.',done:receipts.length>0,page:'invoices',action:'Record receipt'}
+   {title:'Set up your business profile',description:'Confirm the business name, currency, contact details and invoice branding.',done:!!(business.display_name&&business.currency_code),page:'branding',action:'Review business profile'},
+   {title:'Add your first customer',description:'Save a real customer record so the customer can be selected on an invoice.',done:customers.length>0,page:'customers',action:'Add a customer'},
+   {title:'Create your first invoice',description:'Add the products or services you actually sell and save an invoice.',done:invoices.length>0,page:'invoices',action:'Create an invoice'},
+   {title:'Record a customer payment',description:'Record a receipt against an issued invoice to keep the balance accurate.',done:receipts.length>0,page:'invoices',action:'Record a receipt'}
   ];
-  const complete=steps.filter(x=>x.done).length;
+  const complete=steps.filter(x=>x.done).length,next=steps.find(x=>!x.done);
   $('jd-onboarding-count').textContent=complete+' of '+steps.length+' complete';
   $('jd-onboarding-progress').setAttribute('aria-valuenow',String(complete));
   $('jd-onboarding-bar').style.width=(complete/steps.length*100)+'%';
-  $('jd-onboarding-steps').innerHTML=steps.map((x,i)=>'<div class="onboarding-step '+(x.done?'done':'')+'"><span class="step-state">'+(x.done?'✓ COMPLETE':'STEP '+(i+1))+'</span><strong>'+x.title+'</strong><p>'+x.description+'</p><button type="button" class="button '+(x.done?'secondary':'')+'" data-go="'+x.page+'">'+(x.done?'Open again':x.action)+'</button></div>').join('');
-  if(complete===steps.length){const p=panel.querySelector('.subtle');if(p)p.textContent='Your first customer, invoice and receipt are saved. You can continue using the workspace tools below.';}
+  $('jd-onboarding-next').innerHTML=next
+   ?'<div><div class="next-kicker">Recommended next step · '+(complete+1)+' of '+steps.length+'</div><h3>'+next.title+'</h3><p>'+next.description+'</p></div><button type="button" class="button" data-go="'+next.page+'">'+next.action+' →</button>'
+   :'<div><div class="next-kicker">Setup complete</div><h3>Your workspace is ready for day-to-day work</h3><p>Your profile, first customer, invoice and receipt are saved. Continue with inventory, suppliers, team access and reporting when you need them.</p></div><button type="button" class="button secondary" data-go="analytics">Open analytics →</button>';
+  $('jd-onboarding-steps').innerHTML=steps.map((x,i)=>'<div class="onboarding-step '+(x.done?'done':(next===x?'current':''))+'"><span class="step-state">'+(x.done?'✓ SAVED':(next===x?'NEXT UP':'STEP '+(i+1)))+'</span><strong>'+x.title+'</strong><p>'+x.description+'</p><button type="button" class="button '+(x.done?'secondary':'')+'" data-go="'+x.page+'">'+(x.done?'Review':x.action)+'</button></div>').join('');
  }
  async function loadReceipts(){const d=await api('/receipts');const r=d.receipts||[];receipts=r;renderOnboarding();$('document-receipt').innerHTML='<option value="">Select a recorded receipt</option>'+r.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.invoice_number)+' · '+esc(x.customer_name||'Walk-in')+' · '+money(x.amount_minor,business.currency_code)+'</option>').join('');}
  function xmlEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
