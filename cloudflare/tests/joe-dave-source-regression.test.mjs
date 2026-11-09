@@ -65,3 +65,40 @@ test('temporary network failures do not erase a persisted session, and password 
   assert.match(html, /auth-password-toggle/);
   assert.match(html, /aria-pressed/);
 });
+
+test('account deletion is an authenticated, password-confirmed, cancellable request and does not erase business records', () => {
+  const worker = read('../worker.js');
+  const migration = read('../d1/migrations/0007_privacy_requests.sql');
+  const html = read('../../products/joe-dave-operations-intelligence/index.html');
+  assert.match(worker, /path==="\\/account\\/deletion-request"&&req\\.method==="POST"/);
+  assert.match(worker, /confirmation!=="DELETE MY ACCOUNT"/);
+  assert.match(worker, /verifyPassword\\(b\\.password,account\\.password_hash\\)/);
+  assert.match(worker, /scheduledFor=new Date\\(Date\\.now\\(\\)\\+30\\*86400000\\)/);
+  assert.match(worker, /status='cancelled'/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS jd_account_deletion_requests/);
+  assert.match(html, /id="account-deletion-form"/);
+  assert.match(html, /privacy\.html/);
+  assert.doesNotMatch(worker, /DELETE FROM jd_(invoices|receipts|customers|businesses)/);
+});
+
+test('pricing is explicit but cannot enable charges or claim that plan enforcement is live', () => {
+  const plans = read('../../docs/SAAS-PLANS-AND-ENTITLEMENTS.md');
+  const html = read('../../products/joe-dave-operations-intelligence/index.html');
+  const worker = read('../worker.js');
+  assert.match(plans, /Starter/);
+  assert.match(plans, /Growth/);
+  assert.match(plans, /Business/);
+  assert.match(plans, /billing_enabled:false/);
+  assert.match(html, /₦7,500/);
+  assert.match(html, /₦20,000/);
+  assert.match(html, /₦45,000/);
+  assert.match(worker, /billing_enabled:false/);
+});
+
+test('first-run onboarding highlights the next unfinished real-data step', () => {
+  const html = read('../../products/joe-dave-operations-intelligence/index.html');
+  assert.match(html, /id="jd-onboarding-next"/);
+  assert.match(html, /Recommended next step/);
+  assert.match(html, /Setup complete/);
+  assert.match(html, /Your progress is calculated from records saved to your workspace/);
+});
