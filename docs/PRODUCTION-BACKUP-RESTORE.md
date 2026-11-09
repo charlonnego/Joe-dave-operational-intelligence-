@@ -43,7 +43,7 @@ The presence of a bookmark confirms that Cloudflare returned a recovery point. I
 - [x] Production D1 database metadata read successfully.
 - [x] Cloudflare returned a current Time Travel bookmark.
 - [ ] Independent encrypted SQL export stored outside Cloudflare.
-- [ ] Isolated restore rehearsal completed.
-- [ ] Application acceptance tests passed against restored data.
+- [x] Cloudflare Time Travel restore API rehearsed end-to-end on a disposable EU D1 database (9 November 2026): created a sentinel row, captured a bookmark, changed the row, restored the bookmark, verified the original value returned, and deleted the temporary database.
+- [ ] Production SQL export restored into an isolated recovery database and full application acceptance tests passed against that restored production snapshot.
 
-**Do not claim a tested backup/restore programme until the last three checks have been completed.** No production restore was attempted during this review.
+**Do not claim a tested backup/restore programme until the last three checks have been completed.** No production restore was attempted during this review. The disposable restore drill verified Cloudflare's Time Travel mechanism only; it did not copy production customer or payroll records, test an SQL dump, or prove the complete production recovery process.
