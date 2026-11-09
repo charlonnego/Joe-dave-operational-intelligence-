@@ -1,3 +1,5 @@
+import { pbkdf2 } from "node:crypto";
+
 const corsHeaders = origin => ({
  "Access-Control-Allow-Origin": origin || "https://joe-dave-operations-intelligence.pages.dev",
  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
@@ -11,9 +13,9 @@ const digest=async s=>hex(await crypto.subtle.digest("SHA-256",new TextEncoder()
 const PASSWORD_ITERATIONS=210000;
 async function hashPassword(password,saltHex,iterations=PASSWORD_ITERATIONS){
  const salt=saltHex?Uint8Array.from(saltHex.match(/../g).map(x=>parseInt(x,16))):crypto.getRandomValues(new Uint8Array(16));
- const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
- const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations,hash:"SHA-256"},key,256);
- return {stored:"pbkdf2$"+iterations+"$"+hex(salt)+"$"+hex(bits),hash:hex(bits)};
+ const bits=await new Promise((resolve,reject)=>pbkdf2(password,salt,iterations,32,"sha256",(error,key)=>error?reject(error):resolve(key)));
+ const hash=Buffer.from(bits).toString("hex");
+ return {stored:"pbkdf2$"+iterations+"$"+hex(salt)+"$"+hash,hash};
 }
 async function verifyPassword(password,stored){const p=String(stored||"").split("$"),iterations=Number(p[1]);if(p.length!==4||p[0]!=="pbkdf2"||!Number.isInteger(iterations)||iterations<10000||iterations>PASSWORD_ITERATIONS||!/^[a-f0-9]{32}$/i.test(p[2])||!/^[a-f0-9]{64}$/i.test(p[3]))return false;const actual=(await hashPassword(password,p[2],iterations)).hash,expected=p[3].toLowerCase();let diff=0;for(let i=0;i<expected.length;i++)diff|=actual.charCodeAt(i)^expected.charCodeAt(i);return diff===0;}
 async function readJson(req){try{const len=Number(req.headers.get("Content-Length")||0);if(len>1000000)return null;return await req.json();}catch{return null;}}
