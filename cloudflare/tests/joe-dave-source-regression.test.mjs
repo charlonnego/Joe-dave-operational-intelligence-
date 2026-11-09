@@ -40,3 +40,28 @@ test('responsive shell exposes an accessible collapsible module menu and phone/t
   assert.match(html, /@media\(min-width:1600px\)/);
   assert.match(html, /@media\(min-width:2200px\)/);
 });
+
+
+test('mobile command centre exposes direct invoice, customer and inventory actions', () => {
+  const html = read('../../products/joe-dave-operations-intelligence/index.html');
+  assert.match(html, /class="hero-actions"[^>]*aria-label="Quick business actions"/);
+  assert.match(html, /data-go="invoices">＋ Create invoice/);
+  assert.match(html, /data-go="customers">＋ Add customer/);
+  assert.match(html, /data-go="inventory">Import inventory/);
+});
+
+test('invoice drafts are saved per business on-device and restored without being sent to the API', () => {
+  const html = read('../../products/joe-dave-operations-intelligence/index.html');
+  assert.match(html, /jd_invoice_draft_v1_\+business\.id/);
+  assert.match(html, /function saveInvoiceDraft\(\)/);
+  assert.match(html, /function restoreInvoiceDraft\(\)/);
+  assert.match(html, /Invoice created\. Your local draft has been cleared\./);
+  assert.match(html, /not sent to the cloud until you create it/);
+});
+
+test('temporary network failures do not erase a persisted session, and password visibility is user-controlled', () => {
+  const html = read('../../products/joe-dave-operations-intelligence/index.html');
+  assert.match(html, /Your saved session is still on this device/);
+  assert.match(html, /auth-password-toggle/);
+  assert.match(html, /aria-pressed/);
+});
