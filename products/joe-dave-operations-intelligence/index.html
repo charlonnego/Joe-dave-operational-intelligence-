@@ -176,6 +176,21 @@ input,select,textarea{background:#fff;color:#172033;border-color:#cbd5e1}
 input::placeholder,textarea::placeholder{color:#94a3b8}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
 
+
+/* Guided first-run setup: readable, tappable on small screens */
+.onboarding-progress{height:8px;border-radius:999px;background:#e8eef7;overflow:hidden;margin:10px 0 16px}
+.onboarding-progress>span{display:block;height:100%;width:0;background:#2563eb;border-radius:inherit;transition:width .2s ease}
+.onboarding-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.onboarding-step{min-width:0;border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--panel2)}
+.onboarding-step.done{border-color:#b8d9c1;background:#f1f8f2}
+.onboarding-step strong{display:block;font-size:13px;margin:5px 0}
+.onboarding-step p{font-size:12px;min-height:36px}
+.onboarding-step .button{width:100%;margin-top:10px;white-space:normal}
+.onboarding-step .step-state{font-size:11px;font-weight:800;color:#2563eb}
+.onboarding-step.done .step-state{color:#236a3b}
+@media(max-width:900px){.onboarding-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.onboarding-steps{grid-template-columns:1fr}.onboarding-step p{min-height:0}}
+@media(prefers-reduced-motion:reduce){.onboarding-progress>span{transition:none}}
 </style>
 <meta name="description" content="Joe&dave brings finance, invoicing, inventory, purchasing, HR and business operations into one workspace.">
 <meta name="application-name" content="Joe&dave">
@@ -204,6 +219,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <div class="hero"><div><div class="eyebrow">Business command centre</div><h1>Run the business.<br><span style="color:var(--green)">See what needs action.</span></h1><p>A standalone business operations engine. Manage customers, issue invoices, record receipts and import inventory using your own records—not invented figures.</p></div><button class="button" data-go="inventory">Validate an inventory file ↗</button></div>
     <div class="grid">
       <article class="card span-12"><div class="card-head"><h2>Quick access</h2><span class="tag">Workspace tools</span></div><div class="grid"><div class="span-4"><button class="button secondary" data-go="branding" style="width:100%;white-space:normal">✦ Brand, logo & templates</button><p class="subtle" style="margin-top:8px">Upload your logo, set business details and choose invoice/receipt designs.</p></div><div class="span-4"><button class="button secondary" data-go="invoices" style="width:100%;white-space:normal">▤ Create & export invoices</button><p class="subtle" style="margin-top:8px">Create invoices, then export a selected invoice or receipt to PDF or JPG.</p></div><div class="span-4"><button class="button secondary" data-go="analytics" style="width:100%;white-space:normal">▥ Open data analysis</button><p class="subtle" style="margin-top:8px">Review 12-month invoicing, collections, expenses, margins and customer trends.</p></div></div></article>
+      <article class="card span-12" id="jd-onboarding" hidden>
+        <div class="card-head"><div><div class="eyebrow">A simple first run</div><h2 style="margin-top:4px">Get your business workspace ready</h2></div><span class="tag" id="jd-onboarding-count">0 of 4 complete</span></div>
+        <p class="subtle">Follow these steps using your own business information. Your progress is calculated from records saved to your workspace.</p>
+        <div class="onboarding-progress" role="progressbar" aria-label="Workspace setup progress" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" id="jd-onboarding-progress"><span id="jd-onboarding-bar"></span></div>
+        <div class="onboarding-steps" id="jd-onboarding-steps"></div>
+      </article>
       <div id="workspace-load-msg" class="result" hidden></div>
       <article class="card span-8"><div class="card-head"><h2>Business health</h2><span class="tag" id="workspace-label">Sign in to load real data</span></div><div class="grid"><div class="span-6"><div class="metric"><b>Invoices</b><span id="metric-invoices">—</span></div><div class="metric"><b>Invoiced</b><span id="metric-invoiced">—</span></div></div><div class="span-6"><div class="metric"><b>Collected</b><span id="metric-collected">—</span></div><div class="metric"><b>Low stock items</b><span id="metric-lowstock">—</span></div></div></div><div class="empty" id="workspace-empty"><span class="symbol">◌</span><strong>Your real business workspace</strong><span>Create an account or sign in to load actual records. No fabricated financial figures are shown.</span></div></article>
       <article class="card span-4"><div class="card-head"><h2>System status</h2><span class="tag">Honest status</span></div><div class="metric"><b>Web preview</b><span style="color:var(--green)">Available</span></div><div class="metric"><b>API</b><span id="api-line">Checking</span></div><div class="metric"><b>Private database</b><span id="db-line">Checking</span></div><div class="metric"><b>Session</b><span id="session-line">Signed out</span></div></article>
@@ -384,7 +405,7 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
 (() => {
  const API='/api';
  const $=id=>document.getElementById(id);
- let token=localStorage.getItem('jd_session')||'', business=null, authMode='login', customers=[], invoices=[];
+ let token=localStorage.getItem('jd_session')||'', business=null, authMode='login', customers=[], invoices=[], receipts=[];
  const money=(minor,cur)=>new Intl.NumberFormat(undefined,{style:'currency',currency:cur||'NGN'}).format((Number(minor)||0)/100);
  async function api(path,opts={}) {
   const headers={'Content-Type':'application/json',...(opts.headers||{})}; if(token)headers.Authorization='Bearer '+token;
@@ -399,7 +420,7 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
  function showAuth(){ $('auth-backdrop').style.display='flex'; }
  function hideAuth(){ $('auth-backdrop').style.display='none'; }
  function setMode(mode){authMode=mode;$('auth-form').elements.business_name.required=mode==='register';const password=$('auth-form').elements.password;password.minLength=mode==='register'?12:0;password.placeholder=mode==='register'?'Password (minimum 12 characters)':'Password';password.autocomplete=mode==='login'?'current-password':'new-password';$('auth-title').textContent=mode==='login'?'Sign in':'Create your workspace';$('auth-submit').textContent=mode==='login'?'Sign in':'Create account';$('register-fields').style.display=mode==='login'?'none':'grid';$('auth-msg').hidden=true;}
- function setSignedOut(){business=null;customers=[];invoices=[];savedLogo='';$('auth-out').hidden=true;$('auth-open').hidden=false;$('session-line').textContent='Signed out';$('workspace-label').textContent='Sign in to load real data';$('workspace-empty').hidden=false;['metric-invoices','metric-invoiced','metric-collected','metric-lowstock','analytics-invoiced','analytics-collected','analytics-expenses','analytics-profit'].forEach(id=>{if($(id))$(id).textContent='—';});$('customers-list').textContent='Sign in to view your customers';$('invoices-list').textContent='Sign in to view invoices';['suppliers-list','expenses-list','journal-list','po-list','bills-list','bank-accounts-list','bank-transactions-list','period-list','analytics-chart','analytics-monthly-table','analytics-categories','analytics-customers','analytics-insights'].forEach(id=>{if($(id))$(id).textContent='Sign in to load private records';});if($('document-invoice'))$('document-invoice').innerHTML='<option value="">Sign in to view invoices</option>';if($('document-receipt'))$('document-receipt').innerHTML='<option value="">Sign in to view receipts</option>';if($('document-preview')){$('document-preview').hidden=true;$('document-preview').textContent='';}if($('brand-logo-preview'))$('brand-logo-preview').hidden=true;if($('branding-form'))$('branding-form').reset();if($('template-form'))$('template-form').reset();}
+ function setSignedOut(){business=null;customers=[];invoices=[];receipts=[];savedLogo='';renderOnboarding();$('auth-out').hidden=true;$('auth-open').hidden=false;$('session-line').textContent='Signed out';$('workspace-label').textContent='Sign in to load real data';$('workspace-empty').hidden=false;['metric-invoices','metric-invoiced','metric-collected','metric-lowstock','analytics-invoiced','analytics-collected','analytics-expenses','analytics-profit'].forEach(id=>{if($(id))$(id).textContent='—';});$('customers-list').textContent='Sign in to view your customers';$('invoices-list').textContent='Sign in to view invoices';['suppliers-list','expenses-list','journal-list','po-list','bills-list','bank-accounts-list','bank-transactions-list','period-list','analytics-chart','analytics-monthly-table','analytics-categories','analytics-customers','analytics-insights'].forEach(id=>{if($(id))$(id).textContent='Sign in to load private records';});if($('document-invoice'))$('document-invoice').innerHTML='<option value="">Sign in to view invoices</option>';if($('document-receipt'))$('document-receipt').innerHTML='<option value="">Sign in to view receipts</option>';if($('document-preview')){$('document-preview').hidden=true;$('document-preview').textContent='';}if($('brand-logo-preview'))$('brand-logo-preview').hidden=true;if($('branding-form'))$('branding-form').reset();if($('template-form'))$('template-form').reset();}
  async function loadSaaS(){
   const [status,workspaces]=await Promise.all([api('/saas/status'),api('/workspace/list')]);
   $('saas-plan').textContent=String(status.plan||'pilot').toUpperCase();$('saas-status').textContent=String(status.subscription_status||'pilot');$('saas-members-count').textContent=String(status.members??0);$('saas-billing').textContent=status.billing_enabled?'Enabled':'Not enabled';
@@ -420,6 +441,7 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
   const outcomes=await Promise.allSettled(tasks.map(([,fn])=>fn()));
   const failed=outcomes.map((x,i)=>x.status==='rejected'?tasks[i][0]:null).filter(Boolean);
   if(failed.length)result('workspace-load-msg','Signed in. Some panels could not load ('+failed.join(', ')+'). You can still open Brand & templates; use Refresh analysis to retry.',false);
+  renderOnboarding();
   try{await renderOperationalWorkflows();}catch(err){result('finance-msg','Could not calculate live transaction workflows: '+err.message,false);}
  }
  async function renderOperationalWorkflows(){
@@ -555,7 +577,23 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
  $('branding-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('/business',{method:'PUT',body:JSON.stringify({display_name:f.get('display_name'),business_address:f.get('business_address'),business_phone:f.get('business_phone'),business_email:f.get('business_email'),tax_id:f.get('tax_id'),currency_code:f.get('currency_code'),logo_data_url:savedLogo,invoice_template:$('template-form').elements.invoice_template.value,receipt_template:$('template-form').elements.receipt_template.value,brand_color:$('template-form').elements.brand_color.value})});business=await api('/business');fillBranding();result('branding-msg','Business identity and logo saved securely.');await loadWorkspace();}catch(err){result('branding-msg',err.message,false);}});
  $('template-form').addEventListener('submit',async e=>{e.preventDefault();const t=new FormData(e.target),f=$('branding-form');try{await api('/business',{method:'PUT',body:JSON.stringify({display_name:f.elements.display_name.value||business.display_name,business_address:f.elements.business_address.value,business_phone:f.elements.business_phone.value,business_email:f.elements.business_email.value,tax_id:f.elements.tax_id.value,currency_code:f.elements.currency_code.value,logo_data_url:savedLogo,invoice_template:t.get('invoice_template'),receipt_template:t.get('receipt_template'),brand_color:t.get('brand_color')})});business=await api('/business');fillBranding();result('template-msg','Document templates saved.');}catch(err){result('template-msg',err.message,false);}});
  $('branding-form').addEventListener('input',updateTemplatePreview);$('template-form').addEventListener('change',updateTemplatePreview);
- async function loadReceipts(){const d=await api('/receipts');const r=d.receipts||[];$('document-receipt').innerHTML='<option value="">Select a recorded receipt</option>'+r.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.invoice_number)+' · '+esc(x.customer_name||'Walk-in')+' · '+money(x.amount_minor,business.currency_code)+'</option>').join('');}
+ function renderOnboarding(){
+  const panel=$('jd-onboarding');if(!panel)return;
+  if(!business){panel.hidden=true;return;}
+  const steps=[
+   {title:'Confirm business profile',description:'Check your business name, contact details and document branding.',done:!!(business.display_name&&business.currency_code),page:'branding',action:'Review profile'},
+   {title:'Add your first customer',description:'Save a customer so you can select them on an invoice.',done:customers.length>0,page:'customers',action:'Add customer'},
+   {title:'Create your first invoice',description:'Issue an invoice for a real product or service.',done:invoices.length>0,page:'invoices',action:'Create invoice'},
+   {title:'Record your first receipt',description:'Record money received against an issued invoice.',done:receipts.length>0,page:'invoices',action:'Record receipt'}
+  ];
+  const complete=steps.filter(x=>x.done).length;
+  $('jd-onboarding-count').textContent=complete+' of '+steps.length+' complete';
+  $('jd-onboarding-progress').setAttribute('aria-valuenow',String(complete));
+  $('jd-onboarding-bar').style.width=(complete/steps.length*100)+'%';
+  $('jd-onboarding-steps').innerHTML=steps.map((x,i)=>'<div class="onboarding-step '+(x.done?'done':'')+'"><span class="step-state">'+(x.done?'✓ COMPLETE':'STEP '+(i+1))+'</span><strong>'+x.title+'</strong><p>'+x.description+'</p><button type="button" class="button '+(x.done?'secondary':'')+'" data-go="'+x.page+'">'+(x.done?'Open again':x.action)+'</button></div>').join('');
+  if(complete===steps.length){const p=panel.querySelector('.subtle');if(p)p.textContent='Your first customer, invoice and receipt are saved. You can continue using the workspace tools below.';}
+ }
+ async function loadReceipts(){const d=await api('/receipts');const r=d.receipts||[];receipts=r;renderOnboarding();$('document-receipt').innerHTML='<option value="">Select a recorded receipt</option>'+r.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.invoice_number)+' · '+esc(x.customer_name||'Walk-in')+' · '+money(x.amount_minor,business.currency_code)+'</option>').join('');}
  function xmlEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
  function docText(doc,kind){
   const b=doc.business,i=doc.invoice,receipt=doc.receipt,lines=doc.lines||[],currency=b.currency_code||'NGN',isReceipt=kind==='receipt',title=isReceipt?'PAYMENT RECEIPT':'INVOICE',number=isReceipt?(receipt.reference||receipt.id.slice(0,8).toUpperCase()):i.invoice_number;
