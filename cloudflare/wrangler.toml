@@ -1,6 +1,7 @@
 name = "joe-dave-operations-api"
 main = "worker.js"
 compatibility_date = "2026-10-24"
+compatibility_flags = ["nodejs_compat"]
 account_id = "aa960425a186e78adce72854b09c88fe"
 workers_dev = true
 
