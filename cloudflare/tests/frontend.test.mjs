@@ -19,6 +19,19 @@ test("main app keeps the authenticated session across app restarts and clears it
   assert.ok(html.includes("localStorage.removeItem('jd_session')"));
 });
 
+
+test("mobile workspace has persistent quick navigation and safe-area spacing", () => {
+  assert.ok(html.includes('class="mobile-quickbar"'));
+  assert.ok(html.includes('data-mobile-page="invoices"'));
+  assert.ok(html.includes("env(safe-area-inset-bottom)"));
+});
+
+test("invoice creation supports multiple validated line items and a live estimate", () => {
+  for (const fragment of ['id="invoice-lines"', 'id="invoice-add-line"', 'id="invoice-estimate"', "function invoiceLineMarkup()", "data-remove-invoice-line", "lines})"]) {
+    assert.ok(html.includes(fragment), "missing multi-line invoice behavior: " + fragment);
+  }
+});
+
 test("all inline browser scripts parse as JavaScript modules", () => {
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(s => s.trim());
   assert.ok(scripts.length >= 2, "expected the main app and API integration scripts");
