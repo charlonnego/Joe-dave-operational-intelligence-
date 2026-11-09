@@ -191,6 +191,26 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media(max-width:900px){.onboarding-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.onboarding-steps{grid-template-columns:1fr}.onboarding-step p{min-height:0}}
 @media(prefers-reduced-motion:reduce){.onboarding-progress>span{transition:none}}
+
+/* Phone-first invoice line editor and persistent bottom navigation */
+.invoice-line label{display:grid;gap:5px;min-width:0}
+.invoice-line input{width:100%;min-width:0}
+.invoice-line .remove-line{grid-column:1/-1;justify-self:end}
+.mobile-quickbar{display:none}
+@media(max-width:900px){
+ body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+ .mobile-quickbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;position:fixed;z-index:30;left:0;right:0;bottom:0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #dbe5f1;box-shadow:0 -8px 24px rgba(15,35,60,.10);backdrop-filter:blur(12px)}
+ .mobile-quickbar button{min-width:0;min-height:48px;border:0;border-radius:10px;background:transparent;color:#526174;font-size:11px;font-weight:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+ .mobile-quickbar button span:first-child{font-size:18px;line-height:1.1}
+ .mobile-quickbar button.active{background:#eff6ff;color:#1d4ed8}
+ .invoice-line{grid-template-columns:minmax(0,1fr) minmax(72px,.45fr)!important}
+ .invoice-line label:first-child{grid-column:1/-1}
+ .invoice-line label:nth-child(3),.invoice-line label:nth-child(4){grid-row:auto}
+}
+@media(max-width:480px){
+ .mobile-quickbar{padding-left:6px;padding-right:6px}
+ .mobile-quickbar button{font-size:10px}
+}
 </style>
 <meta name="description" content="Joe&dave brings finance, invoicing, inventory, purchasing, HR and business operations into one workspace.">
 <meta name="application-name" content="Joe&dave">
@@ -260,7 +280,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </section>
   <section class="section" id="page-invoices">
     <div class="hero"><div><div class="eyebrow">Invoice desk</div><h1>Create an invoice.</h1><p>Create a real invoice with one line item, then record receipts against its outstanding balance. Amounts are entered in your selected currency and stored as minor units.</p></div></div>
-    <div class="grid"><article class="card span-6"><h2>New invoice</h2><form id="invoice-form" style="display:grid;gap:10px;margin-top:14px"><select name="customer_id" id="invoice-customer"><option value="">No customer / walk-in</option></select><input name="description" required maxlength="300" placeholder="Item or service description"><div class="grid"><div class="span-6"><input name="quantity" required type="number" min="0.001" step="any" value="1" placeholder="Quantity"></div><div class="span-6"><input name="unit_price" required type="number" min="0" step="0.01" placeholder="Unit price"></div></div><div class="grid"><div class="span-6"><input name="tax_rate" type="number" min="0" max="100" step="0.01" value="0" placeholder="Tax %"></div><div class="span-6"><input name="due_date" type="date" aria-label="Due date"></div></div><textarea name="notes" maxlength="1000" placeholder="Notes (optional)" rows="2"></textarea><button class="button" type="submit">Create invoice</button></form><div id="invoice-msg" class="result" hidden></div></article><article class="card span-6"><div class="card-head"><h2>Recent invoices</h2><button class="button secondary" id="invoices-refresh">Refresh</button></div><div id="invoices-list" class="empty"><strong>Sign in to view invoices</strong></div><div style="border-top:1px solid var(--line);margin-top:18px;padding-top:16px"><h2>Record a receipt</h2><form id="receipt-form" style="display:grid;gap:10px;margin-top:12px"><select name="invoice_id" id="receipt-invoice" required><option value="">Select invoice</option></select><input name="amount" type="number" min="0.01" step="0.01" required placeholder="Amount received"><select name="payment_method"><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option></select><input name="reference" placeholder="Reference (optional)"><button class="button secondary" type="submit">Record receipt</button></form><div id="receipt-msg" class="result" hidden></div></div></article></div>
+    <div class="grid"><article class="card span-6"><h2>New invoice</h2><form id="invoice-form" style="display:grid;gap:12px;margin-top:14px">
+      <label class="subtle" for="invoice-customer">Customer</label><select name="customer_id" id="invoice-customer"><option value="">No customer / walk-in</option></select>
+      <div class="card-head" style="margin:4px 0 0"><h2>Items and services</h2><button class="button secondary" id="invoice-add-line" type="button">+ Add line</button></div>
+      <div id="invoice-lines" style="display:grid;gap:10px">
+       <div class="invoice-line" data-invoice-line style="display:grid;grid-template-columns:minmax(0,1fr) 90px 120px 90px;gap:8px;align-items:end">
+        <label class="subtle">Description<input name="description" required maxlength="300" placeholder="Item or service"></label>
+        <label class="subtle">Qty<input name="quantity" required type="number" min="0.001" step="any" value="1"></label>
+        <label class="subtle">Unit price<input name="unit_price" required type="number" min="0" step="0.01" placeholder="0.00"></label>
+        <label class="subtle">Tax %<input name="tax_rate" type="number" min="0" max="100" step="0.01" value="0"></label>
+       </div>
+      </div>
+      <div class="metric"><b>Estimated total</b><span id="invoice-estimate">—</span></div>
+      <div class="grid"><div class="span-6"><label class="subtle">Due date<input name="due_date" type="date"></label></div><div class="span-6"><label class="subtle">Notes<textarea name="notes" maxlength="1000" placeholder="Optional notes" rows="2"></textarea></label></div></div>
+      <button class="button" type="submit">Create invoice</button>
+     </form><div id="invoice-msg" class="result" hidden></div></article><article class="card span-6"><div class="card-head"><h2>Recent invoices</h2><button class="button secondary" id="invoices-refresh">Refresh</button></div><div id="invoices-list" class="empty"><strong>Sign in to view invoices</strong></div><div style="border-top:1px solid var(--line);margin-top:18px;padding-top:16px"><h2>Record a receipt</h2><form id="receipt-form" style="display:grid;gap:10px;margin-top:12px"><select name="invoice_id" id="receipt-invoice" required><option value="">Select invoice</option></select><input name="amount" type="number" min="0.01" step="0.01" required placeholder="Amount received"><select name="payment_method"><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option></select><input name="reference" placeholder="Reference (optional)"><button class="button secondary" type="submit">Record receipt</button></form><div id="receipt-msg" class="result" hidden></div></div></article></div>
   <div class="card" style="margin-top:14px"><div class="card-head"><h2>Professional document export</h2><span class="tag">Your brand · Your data</span></div><p class="subtle">Choose an invoice or receipt and export a branded PDF (via print dialog) or high-resolution JPG.</p><div class="grid"><div class="span-6"><label for="document-invoice">Invoice</label><select id="document-invoice"><option value="">Select an invoice</option></select></div><div class="span-6"><label for="document-receipt">Receipt</label><select id="document-receipt"><option value="">Select a recorded receipt</option></select></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="button" id="invoice-pdf">Invoice PDF / Print</button><button class="button secondary" id="invoice-jpg">Invoice JPG</button><button class="button" id="receipt-pdf">Receipt PDF / Print</button><button class="button secondary" id="receipt-jpg">Receipt JPG</button></div><div id="document-msg" class="result" hidden></div><div id="document-preview" style="margin-top:14px" hidden></div></div>
   </section>
 
@@ -361,11 +395,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <section class="section" id="page-ops-projects"><div class="hero"><div><div class="eyebrow">Operations · 06</div><h1>Projects & Tasks</h1><p>Track projects, task status, dependencies and logged time. Completion can be blocked until prerequisites are done.</p></div><span class="tag">Live API</span></div><div id="ops-projects-root"></div></section>
 <section class="section" id="page-ops-support"><div class="hero"><div><div class="eyebrow">Operations · 07</div><h1>Support / Helpdesk</h1><p>Track customer issues, ticket status, SLA deadlines and knowledge-base articles.</p></div><span class="tag">Live API</span></div><div id="ops-support-root"></div></section>
 
+
+<nav class="mobile-quickbar" aria-label="Quick navigation">
+ <button type="button" data-go="overview" data-mobile-page="overview" class="active"><span>⌂</span>Home</button>
+ <button type="button" data-go="customers" data-mobile-page="customers"><span>♙</span>Customers</button>
+ <button type="button" data-go="invoices" data-mobile-page="invoices"><span>▤</span>Invoices</button>
+ <button type="button" data-go="finance" data-mobile-page="finance"><span>↗</span>Finance</button>
+</nav>
 </main>
 </div>
 <script>
 const buttons=[...document.querySelectorAll('[data-page]')];
-function showPage(name){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='page-'+name));buttons.forEach(b=>b.classList.toggle('active',b.dataset.page===name));const active=buttons.find(b=>b.dataset.page===name);document.getElementById('crumb').textContent=active?active.textContent.trim():name;}
+function showPage(name){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id==='page-'+name));buttons.forEach(b=>b.classList.toggle('active',b.dataset.page===name));document.querySelectorAll('[data-mobile-page]').forEach(b=>b.classList.toggle('active',b.dataset.mobilePage===name));const active=buttons.find(b=>b.dataset.page===name);document.getElementById('crumb').textContent=active?active.textContent.trim():name;}
 buttons.forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
 document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b&&b.dataset.go)showPage(b.dataset.go);});
@@ -510,7 +551,14 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
  $('auth-out').addEventListener('click',async()=>{try{await api('/auth/logout',{method:'POST',body:'{}'});}catch{}token='';localStorage.removeItem('jd_session');setSignedOut();});
  $('customer-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('/customers',{method:'POST',body:JSON.stringify({name:f.get('name'),email:f.get('email'),phone:f.get('phone'),address:f.get('address')})});e.target.reset();result('customer-msg','Customer saved to your workspace.');await loadCustomers();}catch(err){result('customer-msg',err.message,false);}});
  $('customers-refresh').addEventListener('click',()=>loadCustomers().catch(e=>result('customer-msg',e.message,false)));
- $('invoice-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target);try{const qty=Number(f.get('quantity')),price=Math.round(Number(f.get('unit_price'))*100),tax=Number(f.get('tax_rate')||0);const d=await api('/invoices',{method:'POST',body:JSON.stringify({customer_id:f.get('customer_id')||null,due_date:f.get('due_date')||null,notes:f.get('notes'),lines:[{description:f.get('description'),quantity:qty,unit_price_minor:price,tax_rate:tax}]})});result('invoice-msg','Created '+d.invoice_number+' · Total '+money(d.total_minor,business.currency_code));await loadInvoices();await loadWorkspace();}catch(err){result('invoice-msg',err.message,false);}});
+ function invoiceLineMarkup(){return '<div class="invoice-line" data-invoice-line style="display:grid;grid-template-columns:minmax(0,1fr) 90px 120px 90px;gap:8px;align-items:end"><label class="subtle">Description<input name="description" required maxlength="300" placeholder="Item or service"></label><label class="subtle">Qty<input name="quantity" required type="number" min="0.001" step="any" value="1"></label><label class="subtle">Unit price<input name="unit_price" required type="number" min="0" step="0.01" placeholder="0.00"></label><label class="subtle">Tax %<input name="tax_rate" type="number" min="0" max="100" step="0.01" value="0"></label><button class="button secondary remove-line" type="button" data-remove-invoice-line>Remove line</button></div>';}
+ function updateInvoiceEstimate(){const rows=[...$('invoice-lines').querySelectorAll('[data-invoice-line]')];const total=rows.reduce((sum,row)=>{const qty=Number(row.querySelector('[name="quantity"]').value),price=Number(row.querySelector('[name="unit_price"]').value),tax=Number(row.querySelector('[name="tax_rate"]').value||0);return sum+(Number.isFinite(qty)&&qty>0&&Number.isFinite(price)&&price>=0?Math.round(qty*price*100*(1+tax/100)):0);},0);$('invoice-estimate').textContent=money(total,business?.currency_code||'NGN');}
+ function resetInvoiceLines(){const rows=[...$('invoice-lines').querySelectorAll('[data-invoice-line]')];rows.slice(1).forEach(row=>row.remove());const first=$('invoice-lines').querySelector('[data-invoice-line]');if(first)first.querySelectorAll('input').forEach(input=>{if(input.name==='quantity')input.value='1';else if(input.name==='tax_rate')input.value='0';else input.value='';});updateInvoiceEstimate();}
+ $('invoice-add-line').addEventListener('click',()=>{$('invoice-lines').insertAdjacentHTML('beforeend',invoiceLineMarkup());updateInvoiceEstimate();});
+ $('invoice-lines').addEventListener('click',e=>{const remove=e.target.closest('[data-remove-invoice-line]');if(!remove)return;const rows=$('invoice-lines').querySelectorAll('[data-invoice-line]');if(rows.length<=1)return;remove.closest('[data-invoice-line]').remove();updateInvoiceEstimate();});
+ $('invoice-lines').addEventListener('input',updateInvoiceEstimate);
+ $('invoice-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target);try{const lines=[...$('invoice-lines').querySelectorAll('[data-invoice-line]')].map(row=>({description:row.querySelector('[name="description"]').value.trim(),quantity:Number(row.querySelector('[name="quantity"]').value),unit_price_minor:Math.round(Number(row.querySelector('[name="unit_price"]').value)*100),tax_rate:Number(row.querySelector('[name="tax_rate"]').value||0)}));if(!lines.length||lines.some(line=>!line.description||!Number.isFinite(line.quantity)||line.quantity<=0||!Number.isSafeInteger(line.unit_price_minor)||line.unit_price_minor<0||!Number.isFinite(line.tax_rate)||line.tax_rate<0||line.tax_rate>100))throw new Error('Check each invoice line: description, quantity, unit price and tax must be valid.');const d=await api('/invoices',{method:'POST',body:JSON.stringify({customer_id:f.get('customer_id')||null,due_date:f.get('due_date')||null,notes:f.get('notes'),lines})});result('invoice-msg','Created '+d.invoice_number+' · Total '+money(d.total_minor,business.currency_code));e.target.reset();resetInvoiceLines();await loadInvoices();await loadWorkspace();}catch(err){result('invoice-msg',err.message,false);}});
+ updateInvoiceEstimate();
  $('invoices-refresh').addEventListener('click',()=>loadInvoices().catch(e=>result('invoice-msg',e.message,false)));
  $('receipt-form').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.target),id=f.get('invoice_id');try{const d=await api('/invoices/'+encodeURIComponent(id)+'/receipts',{method:'POST',body:JSON.stringify({amount_minor:Math.round(Number(f.get('amount'))*100),payment_method:f.get('payment_method'),reference:f.get('reference')})});result('receipt-msg','Receipt saved. Record ID: '+d.id);e.target.reset();await loadInvoices();await loadWorkspace();}catch(err){result('receipt-msg',err.message,false);}});
  const oldChange=$('csvfile').onchange;
