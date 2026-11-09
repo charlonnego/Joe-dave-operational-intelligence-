@@ -6,11 +6,16 @@
   "scripts": {
     "android:add": "cap add android",
     "android:sync": "cap sync android",
-    "android:build": "cd android && ./gradlew assembleDebug"
+    "android:build": "cd android && ./gradlew assembleDebug",
+    "ios:add": "cap add ios",
+    "ios:sync": "cap sync ios",
+    "ios:open": "cap open ios",
+    "ios:build:simulator": "cd ios/App && xcodebuild -workspace App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
-    "@capacitor/core": "^8.5.0"
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",
