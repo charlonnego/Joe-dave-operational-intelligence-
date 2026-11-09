@@ -87,6 +87,7 @@ export default {async fetch(req,env){
     env.DB.prepare("INSERT INTO jd_businesses(id,owner_id,legal_name,display_name,currency_code) VALUES(?,?,?,?,?)").bind(businessId,userId,b.business_name.trim(),name,currency),
     env.DB.prepare("INSERT INTO jd_business_memberships(id,business_id,user_id,role) VALUES(?,?,?,'owner')").bind(uid(),businessId,userId),
     env.DB.prepare("INSERT INTO jd_business_subscriptions(business_id,plan_code,status) VALUES(?,'pilot','pilot')").bind(businessId),
+    env.DB.prepare("INSERT INTO jd_platform_controls(business_id,plan_code,access_status,updated_by) VALUES(?,'free','active',?)").bind(businessId,userId),
     env.DB.prepare("INSERT INTO jd_sessions(token_hash,user_id,business_id,expires_at) VALUES(?,?,?,?)").bind(await digest(token),userId,businessId,new Date(Date.now()+7*86400000).toISOString()),
     env.DB.prepare("INSERT INTO jd_audit_events(id,business_id,actor_id,action,entity_type,entity_id,details_json) VALUES(?,?,?,?,?,?,?)").bind(uid(),businessId,userId,"account.created","business",businessId,"{}")
    ]);}catch(e){console.error("jd_register_persist_failed",JSON.stringify({stage,name:e?.name||"Error",message:String(e?.message||"unknown").slice(0,180)}));return json({error:"Account could not be created. If this email is new, try again; otherwise sign in."},409,origin);}
@@ -106,6 +107,31 @@ export default {async fetch(req,env){
   }
   if(path==="/auth/logout"&&req.method==="POST"){const t=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();if(t)await env.DB.prepare("DELETE FROM jd_sessions WHERE token_hash=?").bind(await digest(t)).run();return json({ok:true},200,origin);}
   const user=await auth(req,env);
+  if(path.startsWith("/platform/")){
+   if(!user)return json({error:"Sign in required."},401,origin);
+   const ownerEmail=String(env.PLATFORM_OWNER_EMAIL||"").trim().toLowerCase();
+   if(!ownerEmail)return json({error:"Platform owner access has not been configured yet."},503,origin);
+   if(String(user.email||"").toLowerCase()!==ownerEmail)return json({error:"Platform owner access only."},403,origin);
+   if(path==="/platform/overview"&&req.method==="GET"){
+    const [totals,plans,accounts]=await Promise.all([
+     env.DB.prepare("SELECT COUNT(*) AS businesses,(SELECT COUNT(*) FROM jd_users) AS users,(SELECT COUNT(*) FROM jd_businesses WHERE created_at>=datetime('now','-30 days')) AS new_businesses,(SELECT COUNT(*) FROM jd_platform_controls WHERE access_status='suspended') AS suspended,(SELECT COUNT(*) FROM jd_platform_controls WHERE plan_code<>'free' AND access_status='active') AS paid_accounts FROM jd_businesses").first(),
+     env.DB.prepare("SELECT COALESCE(c.plan_code,'free') AS plan_code,COUNT(*) AS count FROM jd_businesses b LEFT JOIN jd_platform_controls c ON c.business_id=b.id GROUP BY COALESCE(c.plan_code,'free')").all(),
+     env.DB.prepare("SELECT b.id,b.display_name,b.legal_name,b.currency_code,b.created_at,u.email AS owner_email,COALESCE(c.plan_code,'free') AS plan_code,COALESCE(c.access_status,'active') AS access_status,c.updated_at,s.status AS billing_status FROM jd_businesses b JOIN jd_users u ON u.id=b.owner_id LEFT JOIN jd_platform_controls c ON c.business_id=b.id LEFT JOIN jd_business_subscriptions s ON s.business_id=b.id ORDER BY b.created_at DESC LIMIT 250").all()
+    ]);
+    return json({summary:totals||{},plans:plans.results||[],businesses:accounts.results||[],billing:{provider_connected:false,message:"Payment collection is not connected. Plan assignments here are administrative, not proof of payment."}},200,origin);
+   }
+   const match=path.match(/^\/platform\/business\/([a-f0-9-]+)$/i);
+   if(match&&req.method==="POST"){
+    const businessId=match[1],b=await readJson(req),plan=String(b?.plan_code||""),access=String(b?.access_status||"");
+    if(!["free","starter","growth","business"].includes(plan)||!["active","suspended"].includes(access))return json({error:"Choose a supported plan and access status."},400,origin);
+    const exists=await env.DB.prepare("SELECT id FROM jd_businesses WHERE id=?").bind(businessId).first();
+    if(!exists)return json({error:"Business account not found."},404,origin);
+    await env.DB.prepare("INSERT INTO jd_platform_controls(business_id,plan_code,access_status,updated_by,updated_at) VALUES(?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(business_id) DO UPDATE SET plan_code=excluded.plan_code,access_status=excluded.access_status,updated_by=excluded.updated_by,updated_at=excluded.updated_at").bind(businessId,plan,access,user.id).run();
+    await audit(env,businessId,user.id,"platform.account_updated","business",businessId,{plan_code:plan,access_status:access});
+    return json({ok:true,business_id:businessId,plan_code:plan,access_status:access},200,origin);
+   }
+   return json({error:"Platform endpoint not found."},404,origin);
+  }
   if(path==="/auth/me"&&req.method==="GET"){if(!user)return json({error:"Sign in required."},401,origin);const b=await ownedBusiness(env,user.id,user.business_id);return json({user:{id:user.id,email:user.email,role:user.role},business:b?{id:b.id,legal_name:b.legal_name,display_name:b.display_name,currency_code:b.currency_code}:null},200,origin);}
   if(!user)return json({error:"Sign in required."},401,origin);
   if(path==="/workspace/switch"&&req.method==="POST"){const b=await readJson(req);if(!validText(b?.business_id,80))return json({error:"Select a valid business workspace."},400,origin);const membership=await env.DB.prepare("SELECT role FROM jd_business_memberships WHERE user_id=? AND business_id=?").bind(user.id,b.business_id).first();if(!membership)return json({error:"You do not have access to that business."},403,origin);const token=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();await env.DB.prepare("UPDATE jd_sessions SET business_id=? WHERE token_hash=? AND user_id=?").bind(b.business_id,await digest(token),user.id).run();const switched=await ownedBusiness(env,user.id,b.business_id);return json({ok:true,business:{id:switched.id,display_name:switched.display_name,currency_code:switched.currency_code},role:membership.role},200,origin);}
