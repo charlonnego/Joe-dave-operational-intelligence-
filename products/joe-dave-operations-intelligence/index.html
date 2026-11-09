@@ -211,6 +211,28 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
  .mobile-quickbar{padding-left:6px;padding-right:6px}
  .mobile-quickbar button{font-size:10px}
 }
+/* Mobile-first workflow refinements */
+.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.hero-actions .button{min-height:46px}
+.password-field{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.password-field input{min-width:0}
+.password-toggle{min-width:76px}
+.invoice-draft-note{margin:0;color:var(--muted);font-size:12px}
+.invoice-submit{min-height:50px;font-weight:750}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+@media(max-width:700px){
+ .hero-actions{display:grid;grid-template-columns:1fr 1fr}
+ .hero-actions .button:first-child{grid-column:1/-1}
+ .invoice-line{grid-template-columns:minmax(0,1fr) minmax(74px,.45fr)!important;gap:10px!important}
+ .invoice-line label:first-child{grid-column:1/-1}
+ .invoice-line label:nth-child(3),.invoice-line label:nth-child(4){grid-row:auto}
+ .invoice-submit{position:sticky;bottom:76px;z-index:4;box-shadow:0 8px 24px #1d4ed833}
+ .password-field{grid-template-columns:minmax(0,1fr) 78px}
+}
+@media(prefers-reduced-motion:no-preference){
+ .hero-actions .button,.invoice-submit{transition:transform .16s ease,box-shadow .16s ease}
+ .hero-actions .button:active,.invoice-submit:active{transform:translateY(1px)}
+}
 </style>
 <meta name="description" content="Joe&dave brings finance, invoicing, inventory, purchasing, HR and business operations into one workspace.">
 <meta name="application-name" content="Joe&dave">
@@ -668,31 +690,7 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
  async function exportDocument(kind,format){
   const win=format==='pdf'?window.open('about:blank','_blank'):null;
   try{const doc=docText(await fetchDoc(kind),kind);$('document-preview').hidden=false;$('document-preview').innerHTML=doc.html;$('document-msg').hidden=true;
-   if(format==='pdf'){if(!win)throw new Error('Allow pop-ups to print or save a PDF.');win.document.open();win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(doc.title)+' '+esc(doc.number)+'</title><style>'+docCss()+'
-/* Mobile-first workflow refinements */
-.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
-.hero-actions .button{min-height:46px}
-.password-field{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
-.password-field input{min-width:0}
-.password-toggle{min-width:76px}
-.invoice-draft-note{margin:0;color:var(--muted);font-size:12px}
-.invoice-submit{min-height:50px;font-weight:750}
-input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
-@media(max-width:700px){
- .hero-actions{display:grid;grid-template-columns:1fr 1fr}
- .hero-actions .button:first-child{grid-column:1/-1}
- .invoice-line{grid-template-columns:minmax(0,1fr) minmax(74px,.45fr)!important;gap:10px!important}
- .invoice-line label:first-child{grid-column:1/-1}
- .invoice-line label:nth-child(3),.invoice-line label:nth-child(4){grid-row:auto}
- .invoice-submit{position:sticky;bottom:76px;z-index:4;box-shadow:0 8px 24px #1d4ed833}
- .password-field{grid-template-columns:minmax(0,1fr) 78px}
-}
-@media(prefers-reduced-motion:no-preference){
- .hero-actions .button,.invoice-submit{transition:transform .16s ease,box-shadow .16s ease}
- .hero-actions .button:active,.invoice-submit:active{transform:translateY(1px)}
-}
-
-</style></head><body>'+doc.html+'<script>window.onload=()=>setTimeout(()=>window.print(),350);<\/script></body></html>');win.document.close();return;}
+   if(format==='pdf'){if(!win)throw new Error('Allow pop-ups to print or save a PDF.');win.document.open();win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(doc.title)+' '+esc(doc.number)+'</title><style>'+docCss()+'</style></head><body>'+doc.html+'<script>window.onload=()=>setTimeout(()=>window.print(),350);<\/script></body></html>');win.document.close();return;}
    const b=doc.business;const lines=kind==='receipt'?['Payment received for '+doc.invoice.invoice_number,'Amount received: '+money(doc.receipt.amount_minor,b.currency_code),'Method: '+doc.receipt.payment_method,'Date: '+String(doc.receipt.received_at||'').slice(0,10)]:[...(doc.lines||[]).map(l=>l.description+' | '+Number(l.quantity)+' x '+money(l.unit_price_minor,b.currency_code)+' = '+money(l.line_subtotal_minor,b.currency_code)),'Subtotal: '+money(doc.invoice.subtotal_minor,b.currency_code),'Tax: '+money(doc.invoice.tax_minor,b.currency_code),'Total: '+money(doc.invoice.total_minor,b.currency_code),'Paid: '+money(doc.invoice.paid_minor,b.currency_code),'Balance due: '+money(Math.max(0,doc.invoice.total_minor-doc.invoice.paid_minor),b.currency_code)];
    const escXml=xmlEsc,accent=(kind==='receipt'?b.receipt_template:b.invoice_template)==='minimal'?'#202820':(b.brand_color||'#245b3a');let y=300,svg='<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600"><rect width="1200" height="1600" fill="#fff"/><rect width="1200" height="18" fill="'+escXml(accent)+'"/>';
    if(b.logo_data_url)svg+='<image href="'+escXml(b.logo_data_url)+'" x="70" y="65" width="170" height="100" preserveAspectRatio="xMidYMid meet"/>';
