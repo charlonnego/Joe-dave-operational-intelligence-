@@ -102,6 +102,29 @@ export default {async fetch(req,env){
   if(!user)return json({error:"Sign in required."},401,origin);
   if(path==="/workspace/switch"&&req.method==="POST"){const b=await readJson(req);if(!validText(b?.business_id,80))return json({error:"Select a valid business workspace."},400,origin);const membership=await env.DB.prepare("SELECT role FROM jd_business_memberships WHERE user_id=? AND business_id=?").bind(user.id,b.business_id).first();if(!membership)return json({error:"You do not have access to that business."},403,origin);const token=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();await env.DB.prepare("UPDATE jd_sessions SET business_id=? WHERE token_hash=? AND user_id=?").bind(b.business_id,await digest(token),user.id).run();const switched=await ownedBusiness(env,user.id,b.business_id);return json({ok:true,business:{id:switched.id,display_name:switched.display_name,currency_code:switched.currency_code},role:membership.role},200,origin);}
   const business=await ownedBusiness(env,user.id,user.business_id);if(!business)return json({error:"Business workspace not found."},404,origin);const bid=business.id;
+  if(path==="/account/deletion-request"&&req.method==="GET"){
+   const request=await env.DB.prepare("SELECT id,status,requested_at,scheduled_for,processed_at FROM jd_account_deletion_requests WHERE user_id=? ORDER BY requested_at DESC LIMIT 1").bind(user.id).first();
+   return json({request:request||null},200,origin);
+  }
+  if(path==="/account/deletion-request"&&req.method==="POST"){
+   const b=await readJson(req);
+   if(!b||b.confirmation!=="DELETE MY ACCOUNT"||typeof b.password!=="string"||b.password.length>200)return json({error:"Enter your password and type DELETE MY ACCOUNT exactly to confirm."},400,origin);
+   const account=await env.DB.prepare("SELECT password_hash FROM jd_users WHERE id=?").bind(user.id).first();
+   if(!account||!(await verifyPassword(b.password,account.password_hash)))return json({error:"Password verification failed. No deletion request was created."},401,origin);
+   const existing=await env.DB.prepare("SELECT id,requested_at,scheduled_for FROM jd_account_deletion_requests WHERE user_id=? AND status='pending'").bind(user.id).first();
+   if(existing)return json({ok:true,request:{...existing,status:"pending"},message:"A deletion request is already pending."},200,origin);
+   const requestId=uid(),scheduledFor=new Date(Date.now()+30*86400000).toISOString(),reason=validText(b.reason,500)?b.reason.trim():"";
+   await env.DB.prepare("INSERT INTO jd_account_deletion_requests(id,user_id,business_id,email_snapshot,status,reason,scheduled_for) VALUES(?,?,?,?,'pending',?,?)").bind(requestId,user.id,bid,user.email,reason,scheduledFor).run();
+   await audit(env,bid,user.id,"account.deletion_requested","account",user.id,{request_id:requestId,scheduled_for:scheduledFor});
+   return json({ok:true,request:{id:requestId,status:"pending",scheduled_for:scheduledFor},message:"Your account-deletion request has been recorded. It will be reviewed before processing; business records may need to be retained by law."},201,origin);
+  }
+  if(path==="/account/deletion-request"&&req.method==="DELETE"){
+   const pending=await env.DB.prepare("SELECT id FROM jd_account_deletion_requests WHERE user_id=? AND status='pending' ORDER BY requested_at DESC LIMIT 1").bind(user.id).first();
+   if(!pending)return json({error:"There is no pending account-deletion request to cancel."},404,origin);
+   await env.DB.prepare("UPDATE jd_account_deletion_requests SET status='cancelled' WHERE id=? AND user_id=? AND status='pending'").bind(pending.id,user.id).run();
+   await audit(env,bid,user.id,"account.deletion_cancelled","account",user.id,{request_id:pending.id});
+   return json({ok:true,message:"Your pending account-deletion request was cancelled."},200,origin);
+  }
   if(!allowedForRole(user.role,path,req.method))return json({error:"Your workspace role does not permit this action."},403,origin);
   if(path==="/workspace/list"&&req.method==="GET"){const r=await env.DB.prepare("SELECT b.id,b.display_name,b.legal_name,b.currency_code,m.role FROM jd_business_memberships m JOIN jd_businesses b ON b.id=m.business_id WHERE m.user_id=? ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,b.created_at").bind(user.id).all();return json({workspaces:r.results||[],active_business_id:bid},200,origin);}
   if(path==="/workspace/members"&&req.method==="GET"){const r=await env.DB.prepare("SELECT m.user_id,u.email,m.role,m.created_at FROM jd_business_memberships m JOIN jd_users u ON u.id=m.user_id WHERE m.business_id=? ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,u.email").bind(bid).all();return json({members:r.results||[],current_role:user.role},200,origin);}
