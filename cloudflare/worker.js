@@ -1,4 +1,4 @@
-import { pbkdf2 } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 const corsHeaders = origin => ({
  "Access-Control-Allow-Origin": origin || "https://joe-dave-operations-intelligence.pages.dev",
@@ -11,10 +11,16 @@ const uid=()=>crypto.randomUUID();
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 const digest=async s=>hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)));
 const PASSWORD_ITERATIONS=210000;
+function pbkdf2Sha256(password,salt,iterations){
+ const key=Buffer.from(password,"utf8"),block=Buffer.concat([Buffer.from(salt),Buffer.from([0,0,0,1])]);
+ const hmac=data=>createHmac("sha256",key).update(data).digest();
+ let u=hmac(block),out=Buffer.from(u);
+ for(let i=1;i<iterations;i++){u=hmac(u);for(let j=0;j<out.length;j++)out[j]^=u[j];}
+ return out;
+}
 async function hashPassword(password,saltHex,iterations=PASSWORD_ITERATIONS){
  const salt=saltHex?Uint8Array.from(saltHex.match(/../g).map(x=>parseInt(x,16))):crypto.getRandomValues(new Uint8Array(16));
- const bits=await new Promise((resolve,reject)=>pbkdf2(password,salt,iterations,32,"sha256",(error,key)=>error?reject(error):resolve(key)));
- const hash=Buffer.from(bits).toString("hex");
+ const hash=pbkdf2Sha256(password,salt,iterations).toString("hex");
  return {stored:"pbkdf2$"+iterations+"$"+hex(salt)+"$"+hash,hash};
 }
 async function verifyPassword(password,stored){const p=String(stored||"").split("$"),iterations=Number(p[1]);if(p.length!==4||p[0]!=="pbkdf2"||!Number.isInteger(iterations)||iterations<10000||iterations>PASSWORD_ITERATIONS||!/^[a-f0-9]{32}$/i.test(p[2])||!/^[a-f0-9]{64}$/i.test(p[3]))return false;const actual=(await hashPassword(password,p[2],iterations)).hash,expected=p[3].toLowerCase();let diff=0;for(let i=0;i<expected.length;i++)diff|=actual.charCodeAt(i)^expected.charCodeAt(i);return diff===0;}
