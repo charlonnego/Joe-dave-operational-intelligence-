@@ -72,7 +72,7 @@ test('account deletion is an authenticated, password-confirmed, cancellable requ
   const html = read('../../products/joe-dave-operations-intelligence/index.html');
   assert.ok(worker.includes('path==="/account/deletion-request"&&req.method==="POST"'));
   assert.match(worker, /confirmation!=="DELETE MY ACCOUNT"/);
-  assert.match(worker, /verifyPassword\\(b\\.password,account\\.password_hash\\)/);
+  assert.ok(worker.includes('verifyPassword(b.password,account.password_hash)'));
   assert.match(worker, /scheduledFor=new Date\\(Date\\.now\\(\\)\\+30\\*86400000\\)/);
   assert.match(worker, /status='cancelled'/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS jd_account_deletion_requests/);
@@ -88,7 +88,7 @@ test('pricing is explicit but cannot enable charges or claim that plan enforceme
   assert.match(plans, /Starter/);
   assert.match(plans, /Growth/);
   assert.match(plans, /Business/);
-  assert.match(plans, /billing_enabled:false/);
+  assert.match(plans, /billing_enabled=false/);
   assert.match(html, /₦7,500/);
   assert.match(html, /₦20,000/);
   assert.match(html, /₦45,000/);
