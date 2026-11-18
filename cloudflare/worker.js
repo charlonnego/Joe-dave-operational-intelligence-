@@ -45,6 +45,7 @@ function allowedForRole(role,path,method){
  if(path==="/workspace/switch")return method==="POST";
  if(path==="/workspace/list")return method==="GET";
  if(path==="/saas/status")return method==="GET";
+ if(path.startsWith("/sales-intelligence/"))return ["owner","admin","sales"].includes(role);
  const scopedPath=path.startsWith("/invoices/")?"/invoices":path.startsWith("/purchase-orders/")?"/purchase-orders":path.startsWith("/supplier-bills/")?"/supplier-bills":path.startsWith("/bank-transactions/")?"/bank-transactions":path.startsWith("/accounting-periods/")?"/accounting-periods":path;
  if(method==="GET"){
   if(role==="accountant")return true;
@@ -136,6 +137,115 @@ export default {async fetch(req,env){
   if(!user)return json({error:"Sign in required."},401,origin);
   if(path==="/workspace/switch"&&req.method==="POST"){const b=await readJson(req);if(!validText(b?.business_id,80))return json({error:"Select a valid business workspace."},400,origin);const membership=await env.DB.prepare("SELECT role FROM jd_business_memberships WHERE user_id=? AND business_id=?").bind(user.id,b.business_id).first();if(!membership)return json({error:"You do not have access to that business."},403,origin);const token=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();await env.DB.prepare("UPDATE jd_sessions SET business_id=? WHERE token_hash=? AND user_id=?").bind(b.business_id,await digest(token),user.id).run();const switched=await ownedBusiness(env,user.id,b.business_id);return json({ok:true,business:{id:switched.id,display_name:switched.display_name,currency_code:switched.currency_code},role:membership.role},200,origin);}
   const business=await ownedBusiness(env,user.id,user.business_id);if(!business)return json({error:"Business workspace not found."},404,origin);const bid=business.id;
+  // Sales intelligence: evidence-backed prospecting, campaign planning and approval-first email drafts.
+  if(path.startsWith("/sales-intelligence/")){
+   const salesRole=["owner","admin","sales"].includes(user.role);
+   if(!salesRole)return json({error:"Sales workspace access is required."},403,origin);
+   const route=path.slice("/sales-intelligence/".length);
+   if(route==="overview"&&req.method==="GET"){
+    const [prospects,signals,campaigns,drafts,approved,replies,suppressed]=await Promise.all([
+     env.DB.prepare("SELECT COUNT(*) AS n FROM jd_crm_leads WHERE business_id=?").bind(bid).first(),
+     env.DB.prepare("SELECT COUNT(*) AS n FROM jd_sales_signals WHERE business_id=?").bind(bid).first(),
+     env.DB.prepare("SELECT COUNT(*) AS n FROM jd_sales_campaigns WHERE business_id=?").bind(bid).first(),
+     env.DB.prepare("SELECT COUNT(*) AS n FROM jd_sales_outbox WHERE business_id=? AND status='draft'").bind(bid).first(),
+     env.DB.prepare("SELECT COUNT(*) AS n FROM jd_sales_outbox WHERE business_id=? AND status='approved'").bind(bid).first(),
+     env.DB.prepare("SELECT COUNT(*) AS n FROM jd_sales_replies WHERE business_id=? AND status='needs_review'").bind(bid).first(),
+     env.DB.prepare("SELECT COUNT(*) AS n FROM jd_sales_suppressions WHERE business_id=?").bind(bid).first()
+    ]);
+    return json({prospects:prospects?.n||0,signals:signals?.n||0,campaigns:campaigns?.n||0,drafts:drafts?.n||0,approved:approved?.n||0,replies_to_review:replies?.n||0,suppressed:suppressed?.n||0,sending_enabled:false},200,origin);
+   }
+   if(route==="prospects"&&req.method==="GET"){
+    const r=await env.DB.prepare("SELECT l.*, (SELECT COUNT(*) FROM jd_sales_signals s WHERE s.business_id=l.business_id AND s.lead_id=l.id) AS signal_count FROM jd_crm_leads l WHERE l.business_id=? ORDER BY l.updated_at DESC LIMIT 500").bind(bid).all();
+    return json({prospects:r.results||[]},200,origin);
+   }
+   if(route==="prospects"&&req.method==="POST"){
+    const b=await readJson(req),name=String(b?.lead_name||"").trim(),email=String(b?.email||"").trim().toLowerCase();
+    if(!validText(name,160)||b?.company_name&&!validText(b.company_name,160)||email.length>254||email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json({error:"Provide a prospect name, a valid company name and a valid email address."},400,origin);
+    const id=uid(),stage=["new","qualified","proposal","negotiation","won","lost"].includes(b.stage)?b.stage:"new";
+    await env.DB.prepare("INSERT INTO jd_crm_leads(id,business_id,lead_name,company_name,email,phone,source,stage,estimated_value_minor,currency_code,next_follow_up,owner_user_id,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,bid,name,b.company_name||null,email||null,b.phone||null,b.source||"Sales intelligence",stage,Math.max(0,Math.round(Number(b.estimated_value_minor||0))),business.currency_code,b.next_follow_up||null,user.id,b.notes||null).run();
+    await audit(env,bid,user.id,"sales_intelligence.prospect_created","crm_lead",id,{company_name:b.company_name||null});
+    return json({id,ok:true},201,origin);
+   }
+   if(route==="signals"&&req.method==="GET"){
+    const r=await env.DB.prepare("SELECT s.*,l.lead_name,l.company_name FROM jd_sales_signals s LEFT JOIN jd_crm_leads l ON l.id=s.lead_id AND l.business_id=s.business_id WHERE s.business_id=? ORDER BY s.observed_at DESC,s.created_at DESC LIMIT 500").bind(bid).all();
+    return json({signals:r.results||[]},200,origin);
+   }
+   if(route==="signals"&&req.method==="POST"){
+    const b=await readJson(req),summary=String(b?.summary||"").trim(),company=String(b?.company_name||"").trim(),type=String(b?.signal_type||"other");
+    if(!validText(summary,1200)||!validText(company,160)||!["hiring","expansion","new_location","technology_gap","service_problem","funding","contract_award","other"].includes(type))return json({error:"Provide a company, signal type and concise evidence summary."},400,origin);
+    if(b.lead_id&&!await env.DB.prepare("SELECT id FROM jd_crm_leads WHERE id=? AND business_id=?").bind(b.lead_id,bid).first())return json({error:"The selected prospect does not belong to this workspace."},403,origin);
+    const source=String(b.source_url||"").trim();if(source&&(!/^https:\/\//i.test(source)||source.length>1000))return json({error:"Evidence links must be valid HTTPS URLs."},400,origin);
+    const id=uid(),observed=dateOk(b.observed_at)?b.observed_at:new Date().toISOString().slice(0,10);
+    await env.DB.prepare("INSERT INTO jd_sales_signals(id,business_id,lead_id,company_name,signal_type,summary,source_url,observed_at,created_by) VALUES(?,?,?,?,?,?,?,?,?)").bind(id,bid,b.lead_id||null,company,type,summary,source||null,observed,user.id).run();
+    await audit(env,bid,user.id,"sales_intelligence.signal_added","sales_signal",id,{company_name:company,signal_type:type});
+    return json({id,ok:true},201,origin);
+   }
+   if(route==="campaigns"&&req.method==="GET"){
+    const r=await env.DB.prepare("SELECT c.*,(SELECT COUNT(*) FROM jd_sales_outbox o WHERE o.campaign_id=c.id AND o.business_id=c.business_id) AS draft_count FROM jd_sales_campaigns c WHERE c.business_id=? ORDER BY c.created_at DESC LIMIT 200").bind(bid).all();
+    return json({campaigns:r.results||[]},200,origin);
+   }
+   if(route==="campaigns"&&req.method==="POST"){
+    const b=await readJson(req),name=String(b?.name||"").trim(),audience=String(b?.audience_description||"").trim(),offer=String(b?.offer_summary||"").trim();
+    if(!validText(name,160)||!validText(audience,1000)||!validText(offer,1200))return json({error:"Campaign name, target audience and offer summary are required."},400,origin);
+    const id=uid();await env.DB.prepare("INSERT INTO jd_sales_campaigns(id,business_id,name,audience_description,offer_summary,status,created_by) VALUES(?,?,?,?,?,'planning',?)").bind(id,bid,name,audience,offer,user.id).run();
+    await audit(env,bid,user.id,"sales_intelligence.campaign_created","sales_campaign",id);
+    return json({id,ok:true},201,origin);
+   }
+   if(route==="outbox"&&req.method==="GET"){
+    const r=await env.DB.prepare("SELECT o.*,l.lead_name,l.company_name,s.summary AS evidence_summary,s.source_url,c.name AS campaign_name FROM jd_sales_outbox o JOIN jd_crm_leads l ON l.id=o.lead_id AND l.business_id=o.business_id LEFT JOIN jd_sales_signals s ON s.id=o.evidence_signal_id AND s.business_id=o.business_id LEFT JOIN jd_sales_campaigns c ON c.id=o.campaign_id AND c.business_id=o.business_id WHERE o.business_id=? ORDER BY o.created_at DESC LIMIT 500").bind(bid).all();
+    return json({outbox:r.results||[]},200,origin);
+   }
+   if(route==="drafts"&&req.method==="POST"){
+    const b=await readJson(req),lead=await env.DB.prepare("SELECT id,email,company_name FROM jd_crm_leads WHERE id=? AND business_id=?").bind(b?.lead_id,bid).first();
+    if(!lead)return json({error:"Select a prospect in this workspace."},404,origin);
+    const to=String(b.to_email||lead.email||"").trim().toLowerCase(),subject=String(b.subject||"").trim(),body=String(b.body||"").trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)||!validText(subject,240)||!validText(body,8000))return json({error:"A valid recipient, subject and email body are required."},400,origin);
+    const suppressed=await env.DB.prepare("SELECT id FROM jd_sales_suppressions WHERE business_id=? AND lower(email)=lower(?)").bind(bid,to).first();
+    if(suppressed)return json({error:"This address is on the workspace suppression list and cannot be drafted for outreach."},409,origin);
+    if(b.campaign_id&&!await env.DB.prepare("SELECT id FROM jd_sales_campaigns WHERE id=? AND business_id=?").bind(b.campaign_id,bid).first())return json({error:"Campaign does not belong to this workspace."},403,origin);
+    if(b.evidence_signal_id&&!await env.DB.prepare("SELECT id FROM jd_sales_signals WHERE id=? AND business_id=?").bind(b.evidence_signal_id,bid).first())return json({error:"Evidence signal does not belong to this workspace."},403,origin);
+    const id=uid();await env.DB.prepare("INSERT INTO jd_sales_outbox(id,business_id,campaign_id,lead_id,to_email,subject,body,evidence_signal_id,status,created_by) VALUES(?,?,?,?,?,?,?,?, 'draft',?)").bind(id,bid,b.campaign_id||null,lead.id,to,subject,body,b.evidence_signal_id||null,user.id).run();
+    await audit(env,bid,user.id,"sales_intelligence.draft_created","sales_outbox",id,{to_email:to});
+    return json({id,status:"draft",ok:true},201,origin);
+   }
+   const outboxAction=route.match(/^outbox\/([a-f0-9-]+)\/(approve|reject)$/i);
+   if(outboxAction&&req.method==="POST"){
+    const id=outboxAction[1],action=outboxAction[2],row=await env.DB.prepare("SELECT id,status,to_email FROM jd_sales_outbox WHERE id=? AND business_id=?").bind(id,bid).first();
+    if(!row)return json({error:"Draft not found."},404,origin);
+    if(row.status!=="draft")return json({error:"Only drafts awaiting review can be approved or rejected."},409,origin);
+    if(action==="approve"&&user.role!=="owner"&&user.role!=="admin")return json({error:"Only an owner or administrator can approve campaign drafts."},403,origin);
+    if(action==="approve"&&await env.DB.prepare("SELECT id FROM jd_sales_suppressions WHERE business_id=? AND lower(email)=lower(?)").bind(bid,row.to_email).first())return json({error:"Recipient is suppressed; approval is blocked."},409,origin);
+    const status=action==="approve"?"approved":"rejected";
+    await env.DB.prepare("UPDATE jd_sales_outbox SET status=?,reviewed_by=?,reviewed_at=? WHERE id=? AND business_id=? AND status='draft'").bind(status,user.id,new Date().toISOString(),id,bid).run();
+    await audit(env,bid,user.id,"sales_intelligence.draft_"+status,"sales_outbox",id);
+    return json({ok:true,status,sending_enabled:false,message:status==="approved"?"Approved for manual export. Joe&dave has not sent this email.":"Draft rejected."},200,origin);
+   }
+   if(route==="replies"&&req.method==="GET"){
+    const r=await env.DB.prepare("SELECT r.*,l.lead_name,l.company_name FROM jd_sales_replies r LEFT JOIN jd_crm_leads l ON l.id=r.lead_id AND l.business_id=r.business_id WHERE r.business_id=? ORDER BY r.received_at DESC LIMIT 300").bind(bid).all();
+    return json({replies:r.results||[]},200,origin);
+   }
+   if(route==="replies"&&req.method==="POST"){
+    const b=await readJson(req),from=String(b?.from_email||"").trim().toLowerCase(),body=String(b?.body||"").trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(from)||!validText(body,10000))return json({error:"Provide a valid sender email and reply content."},400,origin);
+    const lead=b.lead_id?await env.DB.prepare("SELECT id FROM jd_crm_leads WHERE id=? AND business_id=?").bind(b.lead_id,bid).first():null;
+    if(b.lead_id&&!lead)return json({error:"Prospect does not belong to this workspace."},403,origin);
+    const id=uid();await env.DB.prepare("INSERT INTO jd_sales_replies(id,business_id,lead_id,from_email,body,intent,status) VALUES(?,?,?,?,?,'unclassified','needs_review')").bind(id,bid,lead?.id||null,from,body).run();
+    await audit(env,bid,user.id,"sales_intelligence.reply_recorded","sales_reply",id,{from_email:from});
+    return json({id,ok:true,status:"needs_review"},201,origin);
+   }
+   if(route==="suppressions"&&req.method==="GET"){
+    const r=await env.DB.prepare("SELECT id,email,reason,created_at FROM jd_sales_suppressions WHERE business_id=? ORDER BY created_at DESC LIMIT 500").bind(bid).all();return json({suppressions:r.results||[]},200,origin);
+   }
+   if(route==="suppressions"&&req.method==="POST"){
+    const b=await readJson(req),email=String(b?.email||"").trim().toLowerCase(),reason=String(b?.reason||"User requested no further contact").trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||reason.length>300)return json({error:"Provide a valid email and a short suppression reason."},400,origin);
+    await env.DB.prepare("INSERT OR IGNORE INTO jd_sales_suppressions(id,business_id,email,reason,created_by) VALUES(?,?,?,?,?)").bind(uid(),bid,email,reason,user.id).run();
+    await audit(env,bid,user.id,"sales_intelligence.suppression_added","sales_suppression",null,{email});
+    return json({ok:true,email},201,origin);
+   }
+   return json({error:"Sales intelligence endpoint not found."},404,origin);
+  }
+
   if(path==="/account/deletion-request"&&req.method==="GET"){
    const request=await env.DB.prepare("SELECT id,status,requested_at,scheduled_for,processed_at FROM jd_account_deletion_requests WHERE user_id=? ORDER BY requested_at DESC LIMIT 1").bind(user.id).first();
    return json({request:request||null},200,origin);
