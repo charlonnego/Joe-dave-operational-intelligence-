@@ -36,3 +36,8 @@ The live schema includes additive migrations 0002 through 0005. Existing finance
 - The UI and Worker JavaScript syntax are checked in the Joe & Dave operational workflow. Cloudflare deployment success confirms publication, not a full authenticated browser-based end-to-end acceptance test.
 
 Never represent these limitations as completed capabilities. Keep all customer-facing claims aligned with the workflows that have been tested.
+
+
+## Growth & Sales Intelligence (Sellbird-inspired, independently implemented)
+
+A separate first-party module adds prospect management connected to the CRM, evidence-backed buying signals, campaign planning, an approval-first personalised email draft outbox, manually recorded replies, CSV export of approved drafts, and workspace-level do-not-contact suppressions. It does not copy Sellbird source or branding and does not require a Sellbird account. No email sending, mailbox access, automatic prospect scraping, email verification or AI generation is enabled; those require separate integrations and explicit configuration. Draft approval only authorises manual export, never sending. All sales intelligence records are tenant-scoped and protected by the sales role.
