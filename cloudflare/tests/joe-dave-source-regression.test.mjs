@@ -70,7 +70,7 @@ test('account deletion is an authenticated, password-confirmed, cancellable requ
   const worker = read('../worker.js');
   const migration = read('../d1/migrations/0007_privacy_requests.sql');
   const html = read('../../products/joe-dave-operations-intelligence/index.html');
-  assert.match(worker, /path==="\\/account\\/deletion-request"&&req\\.method==="POST"/);
+  assert.ok(worker.includes('path==="/account/deletion-request"&&req.method==="POST"'));
   assert.match(worker, /confirmation!=="DELETE MY ACCOUNT"/);
   assert.match(worker, /verifyPassword\\(b\\.password,account\\.password_hash\\)/);
   assert.match(worker, /scheduledFor=new Date\\(Date\\.now\\(\\)\\+30\\*86400000\\)/);
