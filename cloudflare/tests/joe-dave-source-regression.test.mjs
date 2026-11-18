@@ -73,7 +73,7 @@ test('account deletion is an authenticated, password-confirmed, cancellable requ
   assert.ok(worker.includes('path==="/account/deletion-request"&&req.method==="POST"'));
   assert.match(worker, /confirmation!=="DELETE MY ACCOUNT"/);
   assert.ok(worker.includes('verifyPassword(b.password,account.password_hash)'));
-  assert.match(worker, /scheduledFor=new Date\\(Date\\.now\\(\\)\\+30\\*86400000\\)/);
+  assert.ok(worker.includes('scheduledFor=new Date(Date.now()+30*86400000)'));
   assert.match(worker, /status='cancelled'/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS jd_account_deletion_requests/);
   assert.match(html, /id="account-deletion-form"/);
