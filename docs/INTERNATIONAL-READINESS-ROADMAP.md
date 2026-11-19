@@ -4,6 +4,14 @@
 **Product model:** multi-tenant business operations SaaS with web, Android and iOS clients.
 **Release principle:** one authoritative API and permission model; web and mobile are separate clients with equivalent business workflows.
 
+## Operator details supplied by the owner
+
+- Customer-facing business name: **Joe and dave**.
+- Intended operating / business location: **New York, USA**.
+- These details may be used for product configuration and draft business-facing copy.
+- They do **not** establish a registered legal entity name, a complete postal address, a state of incorporation/registration, a privacy contact email, or a tax identification number. Do not publish invented legal particulars or claim New York registration based only on the location supplied.
+- Before publishing binding Terms, Privacy Notice, DPA, billing/tax disclosures or store privacy declarations, confirm the registered entity (if any), full postal address, privacy/support contact, data controller identity and applicable tax registrations. If Joe and dave is a sole proprietorship or trade name, the legal contracting party must be described accurately.
+
 ## 1. Product quality bar
 
 - Preserve the existing HTML/PWA experience as the web product and visual reference; do not replace it with a reduced mobile interface.
