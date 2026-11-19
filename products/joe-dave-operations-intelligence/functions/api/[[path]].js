@@ -20,7 +20,7 @@ export async function onRequest({ request }) {
     return new Response(null, { status: 204, headers: cors });
   }
 
-  const suffix = incoming.pathname.replace(/^\\/api(?=\\/|$)/, "") || "/";
+  const suffix = incoming.pathname.replace(/^\/api(?=\/|$)/, "") || "/";
   const upstream = new URL("https://joe-dave-operations-api.uchechukwuanuforo.workers.dev");
   upstream.pathname = suffix;
   upstream.search = incoming.search;
