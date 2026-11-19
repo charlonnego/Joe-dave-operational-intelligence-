@@ -1,7 +1,12 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 const required = ['ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD'];
-for (const key of required) if (!process.env[key]) throw new Error('Missing signing secret: ' + key);
+const present = required.filter(key => Boolean(process.env[key]));
+if (present.length === 0) {
+  console.log('No Android upload-key secrets configured; release AAB will be unsigned and cannot be submitted to Google Play.');
+  process.exit(0);
+}
+if (present.length !== required.length) throw new Error('Android upload signing is only partially configured. Set all four ANDROID_KEYSTORE_* secrets.');
 const gradlePath = resolve('android/app/build.gradle');
 if (!existsSync(gradlePath)) throw new Error('Android app Gradle file not found.');
 const keyPath = resolve('android/app/joe-dave-upload.jks');
