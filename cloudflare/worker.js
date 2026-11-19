@@ -93,16 +93,16 @@ export default {async fetch(req,env){
    return json({token,user:{id:userId,email},business:{id:businessId,display_name:name,currency_code:currency}},201,origin);
   }
   if(path==="/auth/login"&&req.method==="POST"){
-   const b=await readJson(req);if(!b||!validText(b.email,254)||typeof b.password!=="string"||b.password.length>200)return json({error:"Email and password are required."},400,origin);
-   const email=b.email.trim().toLowerCase(),eh=await digest(email),ip=await digest(req.headers.get("CF-Connecting-IP")||"unknown");
+   stage="login.read";const b=await readJson(req);if(!b||!validText(b.email,254)||typeof b.password!=="string"||b.password.length>200)return json({error:"Email and password are required."},400,origin);
+   stage="login.rate_limit";const email=b.email.trim().toLowerCase(),eh=await digest(email),ip=await digest(req.headers.get("CF-Connecting-IP")||"unknown");
    const recent=await env.DB.prepare("SELECT COUNT(*) AS n FROM jd_auth_attempts WHERE (email_hash=? OR ip_hash=?) AND success=0 AND created_at>=strftime('%Y-%m-%dT%H:%M:%fZ','now','-15 minutes')").bind(eh,ip).first();
    if((recent?.n||0)>=12)return json({error:"Too many failed sign-in attempts. Try again in 15 minutes."},429,origin);
-   const u=await env.DB.prepare("SELECT id,email,password_hash FROM jd_users WHERE email=?").bind(email).first();
-   if(!u||!(await verifyPassword(b.password,u.password_hash))){await env.DB.prepare("INSERT INTO jd_auth_attempts(id,ip_hash,email_hash,success) VALUES(?,?,?,0)").bind(uid(),ip,eh).run();return json({error:"Invalid email or password."},401,origin);}
-   if(Number(String(u.password_hash||"").split("$")[1])<PASSWORD_ITERATIONS){const upgraded=await hashPassword(b.password);await env.DB.prepare("UPDATE jd_users SET password_hash=? WHERE id=? AND password_hash=?").bind(upgraded.stored,u.id,u.password_hash).run();}
-   const membership=await env.DB.prepare("SELECT business_id,role FROM jd_business_memberships WHERE user_id=? ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,created_at LIMIT 1").bind(u.id).first();const business=membership?await ownedBusiness(env,u.id,membership.business_id):null;if(!business)return json({error:"No business workspace is associated with this account."},409,origin);
-   const token=hex(crypto.getRandomValues(new Uint8Array(32)));await env.DB.batch([env.DB.prepare("INSERT INTO jd_sessions(token_hash,user_id,business_id,expires_at) VALUES(?,?,?,?)").bind(await digest(token),u.id,business.id,new Date(Date.now()+7*86400000).toISOString()),env.DB.prepare("INSERT INTO jd_auth_attempts(id,ip_hash,email_hash,success) VALUES(?,?,?,1)").bind(uid(),ip,eh)]);
-   return json({token,user:{id:u.id,email:u.email},business:{id:business.id,display_name:business.display_name,currency_code:business.currency_code}},200,origin);
+   stage="login.user_lookup";const u=await env.DB.prepare("SELECT id,email,password_hash FROM jd_users WHERE email=?").bind(email).first();
+   stage="login.password_verify";if(!u||!(await verifyPassword(b.password,u.password_hash))){await env.DB.prepare("INSERT INTO jd_auth_attempts(id,ip_hash,email_hash,success) VALUES(?,?,?,0)").bind(uid(),ip,eh).run();return json({error:"Invalid email or password."},401,origin);}
+   stage="login.password_upgrade";if(Number(String(u.password_hash||"").split("$")[1])<PASSWORD_ITERATIONS){const upgraded=await hashPassword(b.password);await env.DB.prepare("UPDATE jd_users SET password_hash=? WHERE id=? AND password_hash=?").bind(upgraded.stored,u.id,u.password_hash).run();}
+   stage="login.membership";const membership=await env.DB.prepare("SELECT business_id,role FROM jd_business_memberships WHERE user_id=? ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,created_at LIMIT 1").bind(u.id).first();const business=membership?await ownedBusiness(env,u.id,membership.business_id):null;if(!business)return json({error:"No business workspace is associated with this account."},409,origin);
+   stage="login.session_create";const token=hex(crypto.getRandomValues(new Uint8Array(32)));await env.DB.batch([env.DB.prepare("INSERT INTO jd_sessions(token_hash,user_id,business_id,expires_at) VALUES(?,?,?,?)").bind(await digest(token),u.id,business.id,new Date(Date.now()+7*86400000).toISOString()),env.DB.prepare("INSERT INTO jd_auth_attempts(id,ip_hash,email_hash,success) VALUES(?,?,?,1)").bind(uid(),ip,eh)]);
+   stage="login.respond";return json({token,user:{id:u.id,email:u.email},business:{id:business.id,display_name:business.display_name,currency_code:business.currency_code}},200,origin);
   }
   if(path==="/auth/logout"&&req.method==="POST"){const t=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();if(t)await env.DB.prepare("DELETE FROM jd_sessions WHERE token_hash=?").bind(await digest(t)).run();return json({ok:true},200,origin);}
   const user=await auth(req,env);
@@ -620,5 +620,5 @@ export default {async fetch(req,env){
   }
 
   return json({error:"Endpoint not found."},404,origin);
- }catch(e){const reference=uid();console.error("jd_api_request_failed",JSON.stringify({reference,path,method:req.method,stage,name:e?.name||"Error",message:String(e?.message||"unknown").slice(0,180)}));return json({error:path==="/auth/register"?"We could not finish creating your account. Please retry once; if it still fails, share reference "+reference+".":"Request could not be completed. No internal details were exposed.",reference},500,origin);}
+ }catch(e){const reference=uid();console.error("jd_api_request_failed",JSON.stringify({reference,path,method:req.method,stage,errorType:e?.name||"Error"}));return json({error:path==="/auth/register"?"We could not finish creating your account. Please retry once; if it still fails, share reference "+reference+".":"Request could not be completed. No internal details were exposed.",reference},500,origin);}
 }};
