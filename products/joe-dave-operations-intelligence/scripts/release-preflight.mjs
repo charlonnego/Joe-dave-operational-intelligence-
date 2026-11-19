@@ -8,7 +8,7 @@ const pass = (name, detail='') => checks.push({status:'PASS',name,detail});
 const block = (name, detail) => checks.push({status:'BLOCK',name,detail});
 const fail = (name, detail) => checks.push({status:'FAIL',name,detail});
 
-for (const p of ['index.html','operations-modules.js','manifest.webmanifest','service-worker.js','capacitor.config.ts','functions/api/[[path]].js','privacy.html']) {
+for (const p of ['index.html','operations-modules.js','manifest.webmanifest','service-worker.js','capacitor.config.ts','functions/api/[[path]].js','privacy.html','delete-account.html']) {
   if (existsSync(resolve(root,p))) pass('Required PWA source exists',p);
   else fail('Required PWA source exists',p+' is missing');
 }
@@ -20,6 +20,7 @@ const sw = read('service-worker.js');
 const cap = read('capacitor.config.ts');
 const gateway = read('functions/api/[[path]].js');
 const privacy = read('privacy.html');
+const deletionPage = read('delete-account.html');
 
 if (index.includes("const API='/api'") && index.includes("fetch('/api/health'")) pass('Core app uses same-origin API gateway');
 else fail('Core app uses same-origin API gateway','Expected /api and /api/health');
@@ -30,8 +31,11 @@ else fail('Operational modules use same-origin API gateway','Remove direct Worke
 if (gateway.includes('incoming.pathname.replace') && gateway.includes('fetch(new Request(upstream.toString(), init))')) pass('Pages API gateway proxies requests to the Worker');
 else fail('Pages API gateway proxies requests to the Worker','Check the Pages Functions catch-all route');
 
-if (privacy.includes('publish its registered legal identity') || privacy.includes('Before broad commercial launch')) block('Privacy policy operator identity and contact complete','The published policy still contains a pre-launch instruction to add the operator legal identity and dedicated privacy contact.');
+if (privacy.includes('publish its registered legal identity') || privacy.includes('Before broad commercial launch')) block('Privacy policy operator identity and contact complete','The operator legal identity, registered address and dedicated privacy contact still need to be supplied and verified.');
 else pass('Privacy policy has no pre-launch identity placeholder','The business owner must still verify the legal name, address and contact details before submission.');
+
+if (privacy.includes('/delete-account.html') && deletionPage.includes("/auth/login") && deletionPage.includes("/account/deletion-request")) pass('External account-deletion request page is linked and calls authenticated API');
+else fail('External account-deletion request page is linked and calls authenticated API','Verify privacy link, account sign-in and deletion-request API calls.');
 
 try {
   const manifest = JSON.parse(manifestText);
