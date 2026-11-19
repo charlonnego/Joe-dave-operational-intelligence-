@@ -6,7 +6,9 @@ class FieldSpec {
 class ModuleSpec {
   final String key,title,group;
   final List<FieldSpec> fields;
-  const ModuleSpec(this.key,this.title,this.group,this.fields);
+  final String? apiRoute, collectionKey;
+  final bool readOnly;
+  const ModuleSpec(this.key,this.title,this.group,this.fields,{this.apiRoute,this.collectionKey,this.readOnly=false});
 }
 const moduleSpecs=<ModuleSpec>[
  ModuleSpec('inventory/items','Items','Inventory',[FieldSpec('item_code','Item code','text',true),FieldSpec('name','Item name','text',true),FieldSpec('description','Description','text'),FieldSpec('item_type','Type','select:stock|service|manufactured|raw_material|finished_good'),FieldSpec('unit_of_measure','Unit','text'),FieldSpec('tracking_mode','Tracking','select:none|batch|serial'),FieldSpec('valuation_method','Valuation','select:fifo|moving_average'),FieldSpec('reorder_level','Reorder level','number'),FieldSpec('reorder_quantity','Reorder quantity','number')]),
@@ -37,6 +39,23 @@ const moduleSpecs=<ModuleSpec>[
  ModuleSpec('support/tickets','Support tickets','Helpdesk',[FieldSpec('ticket_number','Ticket number','text',true),FieldSpec('customer_id','Customer ID','text'),FieldSpec('subject','Subject','text',true),FieldSpec('description','Description','text',true),FieldSpec('category','Category','text'),FieldSpec('priority','Priority','select:low|normal|high|urgent'),FieldSpec('assigned_to','Assigned to','text'),FieldSpec('sla_due_at','SLA due ISO time','text')]),
  ModuleSpec('support/messages','Ticket messages','Helpdesk',[FieldSpec('ticket_id','Ticket ID','text',true),FieldSpec('message','Message','text',true),FieldSpec('is_internal','Internal note (1/0)','number')]),
  ModuleSpec('support/articles','Knowledge base','Helpdesk',[FieldSpec('slug','URL slug','text',true),FieldSpec('title','Title','text',true),FieldSpec('body','Article body','text',true),FieldSpec('category','Category','text'),FieldSpec('visibility','Visibility','select:internal|customer|public'),FieldSpec('status','Status','select:draft|published|archived')]),
+
+ ModuleSpec('finance/customers','Customers','Finance & Accounts',[FieldSpec('name','Customer name','text',true),FieldSpec('email','Email','email'),FieldSpec('phone','Phone','text'),FieldSpec('address','Address','text')],apiRoute:'/customers',collectionKey:'customers'),
+ ModuleSpec('finance/suppliers','Suppliers','Finance & Accounts',[FieldSpec('name','Supplier name','text',true),FieldSpec('email','Email','email'),FieldSpec('phone','Phone','text'),FieldSpec('address','Address','text'),FieldSpec('tax_id','Tax ID','text'),FieldSpec('notes','Notes','text')],apiRoute:'/suppliers',collectionKey:'suppliers'),
+ ModuleSpec('finance/expenses','Expenses','Finance & Accounts',[FieldSpec('category','Category','text',true),FieldSpec('description','Description','text',true),FieldSpec('amount_minor','Amount in minor units','number',true),FieldSpec('payment_method','Payment method','select:cash|bank_transfer|card|other',true),FieldSpec('expense_date','Expense date','date'),FieldSpec('supplier_id','Supplier ID','text'),FieldSpec('reference','Reference','text')],apiRoute:'/expenses',collectionKey:'expenses'),
+ ModuleSpec('finance/inventory','Inventory','Finance & Accounts',[FieldSpec('name','Item name','text',true),FieldSpec('sku','SKU / item code','text'),FieldSpec('unit','Unit','text'),FieldSpec('warehouse','Warehouse','text'),FieldSpec('quantity','Opening quantity','number'),FieldSpec('reorder_level','Reorder level','number'),FieldSpec('cost_minor','Cost in minor units','number'),FieldSpec('sale_price_minor','Sale price in minor units','number')],apiRoute:'/inventory',collectionKey:'items'),
+ ModuleSpec('finance/invoices','Invoices','Finance & Accounts',[],apiRoute:'/invoices',collectionKey:'invoices',readOnly:true),
+ ModuleSpec('finance/receipts','Receipts','Finance & Accounts',[],apiRoute:'/receipts',collectionKey:'receipts',readOnly:true),
+ ModuleSpec('finance/purchase-orders','Purchase orders','Finance & Accounts',[],apiRoute:'/purchase-orders',collectionKey:'purchase_orders',readOnly:true),
+ ModuleSpec('finance/supplier-bills','Supplier bills & payables','Finance & Accounts',[FieldSpec('supplier_id','Supplier ID','text',true),FieldSpec('bill_number','Bill number','text',true),FieldSpec('description','Description','text',true),FieldSpec('subtotal_minor','Subtotal in minor units','number',true),FieldSpec('tax_minor','Tax in minor units','number'),FieldSpec('bill_date','Bill date','date'),FieldSpec('due_date','Due date','date'),FieldSpec('reference','Reference','text')],apiRoute:'/supplier-bills',collectionKey:'bills'),
+ ModuleSpec('finance/bank-accounts','Bank accounts','Finance & Accounts',[FieldSpec('name','Account name','text',true),FieldSpec('account_mask','Account number mask','text'),FieldSpec('currency_code','Currency code','text'),FieldSpec('opening_balance_minor','Opening balance in minor units','number')],apiRoute:'/bank-accounts',collectionKey:'accounts'),
+ ModuleSpec('finance/bank-transactions','Bank transactions','Finance & Accounts',[],apiRoute:'/bank-transactions',collectionKey:'transactions',readOnly:true),
+ ModuleSpec('finance/accounting-periods','Accounting periods','Finance & Accounts',[FieldSpec('period_start','Period start','date',true),FieldSpec('period_end','Period end','date',true),FieldSpec('status','Status','select:open|closed')],apiRoute:'/accounting-periods',collectionKey:'periods'),
+ ModuleSpec('finance/journal','Journal entries','Finance & Accounts',[],apiRoute:'/journal',collectionKey:'entries',readOnly:true),
+ ModuleSpec('finance/trial-balance','Trial balance','Reports',[],apiRoute:'/reports/trial-balance',collectionKey:'rows',readOnly:true),
+ ModuleSpec('finance/profit-loss','Profit & loss','Reports',[],apiRoute:'/reports/profit-loss',collectionKey:'rows',readOnly:true),
+ ModuleSpec('finance/inventory-valuation','Inventory valuation','Reports',[],apiRoute:'/reports/inventory-valuation',collectionKey:'rows',readOnly:true),
+ ModuleSpec('finance/audit','Audit trail','Reports',[],apiRoute:'/reports/audit',collectionKey:'events',readOnly:true),
 ];
 const moduleGroups=<String,List<String>>{
  'Inventory':['inventory/items','inventory/warehouses','inventory/lots','inventory/movements','inventory/counts'],
@@ -46,4 +65,6 @@ const moduleGroups=<String,List<String>>{
  'Manufacturing':['manufacturing/boms','manufacturing/orders','manufacturing/job-cards','manufacturing/work-centers'],
  'Projects':['projects/projects','projects/tasks','projects/timesheets'],
  'Helpdesk':['support/tickets','support/messages','support/articles'],
+ 'Finance & Accounts':['finance/customers','finance/suppliers','finance/expenses','finance/inventory','finance/invoices','finance/receipts','finance/purchase-orders','finance/supplier-bills','finance/bank-accounts','finance/bank-transactions','finance/accounting-periods','finance/journal'],
+ 'Reports':['finance/trial-balance','finance/profit-loss','finance/inventory-valuation','finance/audit'],
 };
