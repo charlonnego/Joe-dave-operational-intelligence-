@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'module_specs.dart';
 
 const apiRoot = 'https://joe-dave-operations-api.uchechukwuanuforo.workers.dev';
 const blue = Color(0xFF246BCE);
@@ -117,78 +118,143 @@ class Home extends StatefulWidget {
  const Home({super.key,required this.token,required this.profile,required this.onSignOut});
  @override State<Home> createState()=>_HomeState();
 }
-class _HomeState extends State<Home> {
- int selected=0;
- static const modules=[
-  ('Overview',Icons.grid_view_rounded,'/dashboard'),
-  ('Sales',Icons.point_of_sale_rounded,'/invoices'),
-  ('Customers',Icons.people_alt_outlined,'/customers'),
-  ('Inventory',Icons.inventory_2_outlined,'/inventory'),
-  ('Analytics',Icons.query_stats_rounded,'/analytics')];
+class _HomeState extends State<Home>{
+ String selected='dashboard',group='Overview';
  @override Widget build(BuildContext context){
-  final b=widget.profile['business'] is Map?widget.profile['business'] as Map:{};
-  return Scaffold(appBar:AppBar(title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-   const Text('Joe&dave',style:TextStyle(fontWeight:FontWeight.w800)),
-   Text((b['display_name']??'Operations workspace').toString(),style:const TextStyle(fontSize:12,color:Colors.blueGrey))]),
-   actions:[IconButton(tooltip:'Sign out',onPressed:widget.onSignOut,icon:const Icon(Icons.logout_rounded))]),
-   body:ModulePage(token:widget.token,module:modules[selected]),
-   bottomNavigationBar:NavigationBar(selectedIndex:selected,onDestinationSelected:(v)=>setState(()=>selected=v),backgroundColor:Colors.white,indicatorColor:const Color(0xFFE4EEFC),destinations:const [
-    NavigationDestination(icon:Icon(Icons.grid_view_rounded),label:'Home'),
-    NavigationDestination(icon:Icon(Icons.point_of_sale_rounded),label:'Sales'),
-    NavigationDestination(icon:Icon(Icons.people_alt_outlined),label:'Customers'),
-    NavigationDestination(icon:Icon(Icons.inventory_2_outlined),label:'Stock'),
-    NavigationDestination(icon:Icon(Icons.query_stats_rounded),label:'Insights')]));
+  ModuleSpec? spec;
+  for(final m in moduleSpecs){if(m.key==selected){spec=m;break;}}
+  return Scaffold(appBar:AppBar(title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Joe&dave',style:TextStyle(fontWeight:FontWeight.w800)),Text(group,style:const TextStyle(fontSize:12,color:Colors.blueGrey))]),actions:[IconButton(onPressed:widget.onSignOut,icon:const Icon(Icons.logout))]),
+   drawer:Drawer(child:SafeArea(child:ListView(children:[
+    const ListTile(leading:CircleAvatar(backgroundColor:blue,child:Icon(Icons.insights,color:Colors.white)),title:Text('Joe&dave',style:TextStyle(fontWeight:FontWeight.w800)),subtitle:Text('Operations Intelligence')),
+    ListTile(selected:selected=='dashboard',leading:const Icon(Icons.dashboard),title:const Text('Business overview'),onTap:(){setState((){selected='dashboard';group='Overview';});Navigator.pop(context);}),
+    for(final entry in moduleGroups.entries)...[
+     Padding(padding:const EdgeInsets.fromLTRB(16,18,12,6),child:Text(entry.key.toUpperCase(),style:const TextStyle(fontSize:11,fontWeight:FontWeight.w800,color:Colors.blueGrey))),
+     for(final key in entry.value)
+      ListTile(dense:true,selected:selected==key,leading:const Icon(Icons.circle_outlined,size:15),title:Text(moduleSpecs.firstWhere((m)=>m.key==key).title),onTap:(){setState((){selected=key;group=entry.key;});Navigator.pop(context);})
+    ],
+    ListTile(leading:const Icon(Icons.logout),title:const Text('Sign out'),onTap:widget.onSignOut)
+   ]))),
+   body:selected=='dashboard'?DashboardPage(token:widget.token,onOpen:(key,title){setState((){selected=key;group=title;});}):spec==null?const Center(child:Text('Unavailable')):ResourcePage(key:ValueKey(selected),token:widget.token,spec:spec));
  }
 }
 
-class ModulePage extends StatefulWidget {
- final String token; final (String,IconData,String) module;
- const ModulePage({super.key,required this.token,required this.module});
- @override State<ModulePage> createState()=>_ModulePageState();
+class DashboardPage extends StatefulWidget{
+ final String token;final void Function(String,String) onOpen;
+ const DashboardPage({super.key,required this.token,required this.onOpen});
+ @override State<DashboardPage> createState()=>_DashboardPageState();
 }
-class _ModulePageState extends State<ModulePage> {
+class _DashboardPageState extends State<DashboardPage>{
  late Future<Map<String,dynamic>> future;
- @override void initState(){super.initState();future=Api(widget.token).get(widget.module.$3);}
- @override void didUpdateWidget(covariant ModulePage old){super.didUpdateWidget(old);if(old.module.$3!=widget.module.$3)future=Api(widget.token).get(widget.module.$3);}
- @override Widget build(BuildContext context)=>RefreshIndicator(onRefresh:()async{setState(()=>future=Api(widget.token).get(widget.module.$3));await future;},child:FutureBuilder<Map<String,dynamic>>(future:future,builder:(context,s){
+ @override void initState(){super.initState();future=Api(widget.token).get('/ops/');}
+ Future<void> reload()async{setState(()=>future=Api(widget.token).get('/ops/'));await future;}
+ @override Widget build(BuildContext context)=>RefreshIndicator(onRefresh:reload,child:FutureBuilder<Map<String,dynamic>>(future:future,builder:(context,s){
   if(s.connectionState==ConnectionState.waiting)return const Center(child:CircularProgressIndicator());
-  if(s.hasError)return ListView(padding:const EdgeInsets.all(22),children:[const SizedBox(height:70),const Icon(Icons.cloud_off_outlined,size:48,color:Colors.blueGrey),const SizedBox(height:12),Text('Could not load '+widget.module.$1.toLowerCase(),textAlign:TextAlign.center,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w700)),const SizedBox(height:8),Text(s.error.toString().replaceFirst('Exception: ',''),textAlign:TextAlign.center,style:const TextStyle(color:Colors.blueGrey)),const SizedBox(height:14),OutlinedButton(onPressed:()=>setState(()=>future=Api(widget.token).get(widget.module.$3)),child:const Text('Try again'))]);
-  final data=s.data??{};
-  return ListView(padding:const EdgeInsets.fromLTRB(18,18,18,28),children:[
-   Text(widget.module.$1,style:const TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink)),
-   const SizedBox(height:4),const Text('Live workspace data',style:TextStyle(color:Colors.blueGrey)),const SizedBox(height:18),
-   if(widget.module.$3=='/dashboard'||widget.module.$3=='/analytics')..._summaryCards(data),
-   ..._recordSections(data),
-   if(data.isEmpty)const Card(child:Padding(padding:EdgeInsets.all(20),child:Text('No records are available for this workspace yet.')))
+  if(s.hasError)return ListView(padding:const EdgeInsets.all(24),children:[const SizedBox(height:70),Text(s.error.toString(),textAlign:TextAlign.center),TextButton(onPressed:reload,child:const Text('Retry'))]);
+  final metrics=<Widget>[];
+  void scan(dynamic v){if(v is Map){v.forEach((k,x){if(x is num)metrics.add(SizedBox(width:MediaQuery.of(context).size.width>600?180:(MediaQuery.of(context).size.width-46)/2,child:Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(k.toString().replaceAll('_',' '),style:const TextStyle(color:Colors.blueGrey,fontSize:12)),const SizedBox(height:7),Text(x.toString(),style:const TextStyle(fontSize:23,fontWeight:FontWeight.w800,color:ink))])))));else if(x is Map)scan(x);});}}
+  scan(s.data??{});
+  return ListView(padding:const EdgeInsets.all(18),children:[
+   const Text('Business overview',style:TextStyle(fontSize:25,fontWeight:FontWeight.w800,color:ink)),
+   const Text('Live figures from your authenticated workspace.',style:TextStyle(color:Colors.blueGrey)),
+   const SizedBox(height:14),Wrap(spacing:10,runSpacing:10,children:metrics.take(12).toList()),
+   const SizedBox(height:20),const Text('Operations modules',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800)),
+   for(final entry in moduleGroups.entries)Card(child:ExpansionTile(title:Text(entry.key,style:const TextStyle(fontWeight:FontWeight.w700)),children:[for(final key in entry.value)ListTile(title:Text(moduleSpecs.firstWhere((m)=>m.key==key).title),trailing:const Icon(Icons.chevron_right),onTap:()=>widget.onOpen(key,entry.key))])),
+   const Card(child:Padding(padding:EdgeInsets.all(14),child:Text('Payroll calculations currently cover base salary only. Statutory deductions and local compliance must be independently validated before processing payroll.')))
   ]);
  }));
+}
+
+class ResourcePage extends StatefulWidget{
+ final String token;final ModuleSpec spec;
+ const ResourcePage({super.key,required this.token,required this.spec});
+ @override State<ResourcePage> createState()=>_ResourcePageState();
+}
+class _ResourcePageState extends State<ResourcePage>{
+ late Future<List<Map<String,dynamic>>> future;String query='';
+ @override void initState(){super.initState();future=load();}
+ Future<List<Map<String,dynamic>>> load()async{final d=await Api(widget.token).get('/ops/'+widget.spec.key);final rows=d['records']??d['rows']??[];return rows is List?rows.whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList():<Map<String,dynamic>>[];}
+ Future<void> refresh()async{setState(()=>future=load());await future;}
+ @override Widget build(BuildContext context)=>Column(children:[
+  Padding(padding:const EdgeInsets.fromLTRB(16,16,16,8),child:Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(widget.spec.title,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w800,color:ink)),Text(widget.spec.fields.length.toString()+' fields · live records',style:const TextStyle(color:Colors.blueGrey,fontSize:12))])),FilledButton.icon(onPressed:create,icon:const Icon(Icons.add),label:const Text('New'))])),
+  Padding(padding:const EdgeInsets.symmetric(horizontal:16,vertical:6),child:TextField(onChanged:(v)=>setState(()=>query=v),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'Search records',isDense:true))),
+  Expanded(child:RefreshIndicator(onRefresh:refresh,child:FutureBuilder<List<Map<String,dynamic>>>(future:future,builder:(context,s){
+   if(s.connectionState==ConnectionState.waiting)return const Center(child:CircularProgressIndicator());
+   if(s.hasError)return ListView(padding:const EdgeInsets.all(24),children:[Text(s.error.toString(),textAlign:TextAlign.center),TextButton(onPressed:refresh,child:const Text('Retry'))]);
+   final all=s.data??[];final rows=all.where((r)=>query.isEmpty||r.values.any((v)=>v!=null&&v.toString().toLowerCase().contains(query.toLowerCase()))).toList();
+   if(rows.isEmpty)return ListView(children:[const SizedBox(height:90),const Icon(Icons.inbox_outlined,size:48,color:Colors.blueGrey),Text(all.isEmpty?'No records yet. Create the first record.':'No matching records.',textAlign:TextAlign.center)]);
+   return ListView.builder(padding:const EdgeInsets.all(14),itemCount:rows.length,itemBuilder:(context,i)=>recordCard(rows[i]));
+  })))
+ ]);
  }
- List<Widget> _summaryCards(Map<String,dynamic> data){
-  final entries=<MapEntry<String,dynamic>>[];
-  void collect(Map m){m.forEach((k,v){if(v is num)entries.add(MapEntry(k,v));else if(v is Map)collect(v);});}
-  collect(data);
-  return [Wrap(spacing:10,runSpacing:10,children:entries.take(8).map((e)=>SizedBox(width:MediaQuery.of(context).size.width>600?180:(MediaQuery.of(context).size.width-46)/2,child:Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-   Text(label(e.key),style:const TextStyle(color:Colors.blueGrey,fontSize:12)),const SizedBox(height:8),
-   Text(e.value.toString(),style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:ink))]))))).toList()),const SizedBox(height:18)];
+ Widget recordCard(Map<String,dynamic> row){
+  final title=(row['name']??row['lead_name']??row['subject']??row['title']??row['item_code']??row['employee_number']??row['order_number']??row['quote_number']??row['request_number']??row['id']??'Record').toString();
+  final status=(row['status']??row['stage']??'').toString();
+  final details=widget.spec.fields.where((f)=>row[f.key]!=null).take(3).map((f)=>f.label+': '+row[f.key].toString()).join(' · ');
+  return Card(margin:const EdgeInsets.only(bottom:10),child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+   Row(children:[Expanded(child:Text(title,style:const TextStyle(fontWeight:FontWeight.w800,color:ink))),if(status.isNotEmpty)Text(status.replaceAll('_',' '),style:const TextStyle(color:blue,fontWeight:FontWeight.w700,fontSize:12))]),
+   if(details.isNotEmpty)Padding(padding:const EdgeInsets.only(top:6),child:Text(details,maxLines:3,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.blueGrey,fontSize:12))),
+   const SizedBox(height:8),Wrap(spacing:5,runSpacing:4,children:[TextButton(onPressed:()=>showDetails(row),child:const Text('Details')),...actions(row).map((a)=>TextButton(onPressed:()=>runAction(row,a),child:Text(a)))])
+  ])));
  }
- List<Widget> _recordSections(Map<String,dynamic> data){
-  final out=<Widget>[];
-  data.forEach((key,value){
-   if(value is List){
-    out.add(Padding(padding:const EdgeInsets.only(bottom:8),child:Text(label(key),style:const TextStyle(fontSize:17,fontWeight:FontWeight.w700,color:ink))));
-    if(value.isEmpty)out.add(const Text('Nothing to show yet.',style:TextStyle(color:Colors.blueGrey)));
-    for(final row in value.take(40)){
-     if(row is Map){
-      final m=Map<String,dynamic>.from(row);
-      final title=(m['name']??m['display_name']??m['customer_name']??m['item_name']??m['invoice_number']??m['id']??'Record').toString();
-      final subtitle=m.entries.where((e)=>e.value!=null&&e.key!='id'&&e.key!='name').take(3).map((e)=>label(e.key)+': '+e.value.toString()).join('  •  ');
-      out.add(Card(child:ListTile(title:Text(title,maxLines:1,overflow:TextOverflow.ellipsis),subtitle:subtitle.isEmpty?null:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis),leading:const CircleAvatar(backgroundColor:Color(0xFFEAF1FC),child:Icon(Icons.description_outlined,color:blue))));
-     }
-    }
-    out.add(const SizedBox(height:14));
-   }else if(value is Map){out.addAll(_recordSections(Map<String,dynamic>.from(value)));}
-  });
-  return out;
+ List<String> actions(Map<String,dynamic> r){
+  final k=widget.spec.key,s=(r['status']??r['stage']??'').toString(),a=<String>[];
+  if(k=='selling/quotations'){if(s=='draft'||s=='sent')a.addAll(['Add quote line','Accept quote']);if(s=='accepted')a.add('Convert to order');}
+  if(k=='buying/requests'){if(s=='draft'||s=='submitted')a.add('Add material line');if(s=='draft')a.add('Submit request');if(s=='submitted')a.addAll(['Approve request','Reject request']);}
+  if(k=='buying/orders'){if(s=='draft'||s=='ordered')a.add('Add item line');if(s=='draft')a.add('Mark ordered');}
+  if(k=='buying/receipts'&&s=='draft')a.add('Post receipt');
+  if(k=='buying/invoices'&&s=='draft')a.add('3-way match');
+  if(k=='inventory/counts'&&s!='approved')a.addAll(['Enter count','Approve count']);
+  if(k=='manufacturing/boms'&&s!='obsolete')a.add('Add component');
+  if(k=='manufacturing/orders'){if(s=='planned')a.add('Release / issue materials');if(s=='released'||s=='in_progress')a.add('Record output');}
+  if(k=='hr/leave'&&s=='pending')a.addAll(['Approve leave','Reject leave']);
+  if(k=='hr/claims'&&s=='submitted')a.addAll(['Approve claim','Reject claim']);if(k=='hr/claims'&&s=='approved')a.add('Mark claim paid');
+  if(k=='hr/payroll'){if(s=='draft'||s=='calculated')a.add('Calculate');if(s=='calculated')a.addAll(['Approve payroll','Salary slips']);if(s=='approved')a.add('Mark payroll paid');}
+  if(k=='projects/timesheets'&&s=='submitted')a.add('Approve time');if(k=='projects/timesheets'&&s=='approved')a.add('Create draft invoice');
+  if(k=='projects/tasks'&&s!='done')a.addAll(['Add prerequisite','Complete task']);
+  if(k=='support/tickets'&&s!='resolved'&&s!='closed')a.add('Resolve ticket');
+  return a;
  }
- String label(String s)=>s.replaceAll('_',' ').split(' ').map((w)=>w.isEmpty?w:w[0].toUpperCase()+w.substring(1)).join(' ');
+ Future<void> create()async{
+  final ctrls={for(final f in widget.spec.fields)f.key:TextEditingController()};
+  final key=GlobalKey<FormState>();bool busy=false;
+  await showModalBottomSheet(context:context,isScrollControlled:true,useSafeArea:true,showDragHandle:true,builder:(ctx)=>StatefulBuilder(builder:(ctx,setSheet)=>Padding(padding:EdgeInsets.fromLTRB(18,12,18,MediaQuery.of(ctx).viewInsets.bottom+16),child:Form(key:key,child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   Text('New '+widget.spec.title,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800)),const SizedBox(height:12),
+   Flexible(child:SingleChildScrollView(child:Column(children:[for(final f in widget.spec.fields)Padding(padding:const EdgeInsets.only(bottom:9),child:field(f,ctrls[f.key]!))]))),
+   FilledButton(onPressed:busy?null:()async{if(!key.currentState!.validate())return;setSheet(()=>busy=true);final body=<String,dynamic>{};for(final f in widget.spec.fields){final v=ctrls[f.key]!.text.trim();if(v.isNotEmpty)body[f.key]=f.type=='number'?num.tryParse(v):v;}try{final out=await Api(widget.token).post('/ops/'+widget.spec.key,body);if(ctx.mounted)Navigator.pop(ctx);await refresh();if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Saved record '+(out['id']??'success').toString())));}catch(e){setSheet(()=>busy=false);ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}},child:busy?const CircularProgressIndicator():const Text('Save record'))
+  ]))));
+  for(final c in ctrls.values){c.dispose();}
+ }
+ Widget field(FieldSpec f,TextEditingController c){
+  if(f.type.startsWith('select:'))return DropdownButtonFormField<String>(decoration:InputDecoration(labelText:f.label),items:f.type.substring(7).split('|').map((v)=>DropdownMenuItem(value:v,child:Text(v.replaceAll('_',' ')))).toList(),onChanged:(v)=>c.text=v??'',validator:(v)=>f.required&&(v==null||v.isEmpty)?'Required':null);
+  return TextFormField(controller:c,keyboardType:f.type=='number'?const TextInputType.numberWithOptions(decimal:true):f.type=='email'?TextInputType.emailAddress:TextInputType.text,maxLines:f.key.contains('description')||f.key=='notes'||f.key=='body'?3:1,decoration:InputDecoration(labelText:f.label),validator:(v)=>f.required&&(v==null||v.trim().isEmpty)?'Required':null);
+ }
+ void showDetails(Map<String,dynamic> row){showModalBottomSheet(context:context,isScrollControlled:true,showDragHandle:true,builder:(ctx)=>SafeArea(child:Padding(padding:const EdgeInsets.all(18),child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(widget.spec.title,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800)),const SizedBox(height:12),for(final e in row.entries)Padding(padding:const EdgeInsets.symmetric(vertical:5),child:Row(crossAxisAlignment:CrossAxisAlignment.start,children:[SizedBox(width:120,child:Text(e.key.replaceAll('_',' '),style:const TextStyle(color:Colors.blueGrey,fontSize:12))),Expanded(child:SelectableText(e.value?.toString()??'—'))]))]))));}
+ Future<void> runAction(Map<String,dynamic> row,String label)async{
+  final id=Uri.encodeComponent((row['id']??'').toString());if(id.isEmpty)return;
+  String path='/ops/'+widget.spec.key+'/'+id,method='POST';Map<String,dynamic> body={};
+  switch(label){
+   case 'Mark ordered':path+='/order';break;
+   case 'Approve time':path='/ops/projects/timesheets/'+id;method='PATCH';body={'status':'approved'};break;
+   case 'Approve leave':case 'Reject leave':path='/ops/hr/leave/'+id;method='PATCH';body={'status':label=='Approve leave'?'approved':'rejected'};break;
+   case 'Approve claim':case 'Reject claim':case 'Mark claim paid':path='/ops/hr/claims/'+id;method='PATCH';body={'status':label=='Approve claim'?'approved':label=='Reject claim'?'rejected':'paid'};break;
+   case 'Submit request':case 'Approve request':case 'Reject request':path='/ops/buying/requests/'+id;method='PATCH';body={'status':label=='Submit request'?'submitted':label=='Approve request'?'approved':'rejected'};break;
+   case 'Accept quote':path='/ops/selling/quotations/'+id+'/accept';break;
+   case 'Convert to order':path='/ops/selling/quotations/'+id+'/convert';break;
+   case 'Release / issue materials':path='/ops/manufacturing/orders/'+id+'/release';break;
+   case 'Record output':final q=await askValue('Quantity produced');if(q==null)return;path='/ops/manufacturing/orders/'+id+'/complete';body={'produced_quantity':num.tryParse(q)??0};break;
+   case 'Approve payroll':path='/ops/hr/payroll/'+id;method='PATCH';body={'status':'approved'};break;
+   case 'Mark payroll paid':path='/ops/hr/payroll/'+id;method='PATCH';body={'status':'paid'};break;
+   case 'Salary slips':path='/ops/hr/payroll/'+id+'/lines';break;
+   case 'Create draft invoice':path='/ops/projects/timesheets/'+id+'/bill';break;
+   case 'Complete task':path='/ops/projects/tasks/'+id+'/complete';break;
+   case 'Resolve ticket':path='/ops/support/tickets/'+id+'/resolve';break;
+   case '3-way match':path='/ops/buying/invoices/'+id+'/match';break;
+   case 'Post receipt':path='/ops/buying/receipts/'+id+'/post';break;
+   case 'Approve count':path='/ops/inventory/counts/'+id+'/approve';break;
+   default:ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('This workflow needs its line-entry editor. No action was submitted.')));return;
+  }
+  try{final result=method=='PATCH'?await patch(path,body):await Api(widget.token).post(path,body);if(label=='Salary slips'&&mounted){final lines=result['lines']??[];showDialog(context:context,builder:(ctx)=>AlertDialog(title:const Text('Salary slips'),content:SingleChildScrollView(child:Text(lines.map((x)=>x.toString()).join('\n'))),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Close'))]));}else{if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(label+' completed')));await refresh();}}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}
+ }
+ Future<Map<String,dynamic>> patch(String path,Map<String,dynamic> body)async{final r=await http.patch(Uri.parse(apiRoot+path),headers:{'Accept':'application/json','Content-Type':'application/json','Authorization':'Bearer '+widget.token},body:jsonEncode(body));final d=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300)throw Exception(d['error']??'Request failed');return Map<String,dynamic>.from(d);}
+ Future<String?> askValue(String title)async{final c=TextEditingController();return showDialog<String>(context:context,builder:(ctx)=>AlertDialog(title:Text(title),content:TextField(controller:c,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Quantity')),actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(ctx,c.text),child:const Text('Continue'))]));}
 }
