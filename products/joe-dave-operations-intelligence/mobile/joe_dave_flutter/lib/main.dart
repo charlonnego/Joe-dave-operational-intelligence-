@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import 'module_specs.dart';
 
 const apiRoot='https://joe-dave-operations-api.uchechukwuanuforo.workers.dev';
@@ -105,6 +106,9 @@ class _WorkspaceState extends State<Workspace>{
   Widget page=current=='home'?Dashboard(token:widget.token,onSelect:(v)=>setState(()=>current=v)):
    current=='settings'?Settings(profile:widget.profile):
    spec.isNotEmpty?ModulePage(key:ValueKey(current),token:widget.token,spec:spec.first):
+   current=='team'?TeamMembersPage(token:widget.token):
+   current=='business-settings'?BusinessSettingsPage(token:widget.token):
+   current=='inventory-import'?InventoryImportPage(token:widget.token):
    sp.isNotEmpty?SpecialPage(key:ValueKey(current),token:widget.token,title:sp.first.$1,path:sp.first.$2):Dashboard(token:widget.token,onSelect:(v)=>setState(()=>current=v));
   return Scaffold(appBar:AppBar(title:Row(children:[const Icon(Icons.insights_rounded,color:blue),const SizedBox(width:8),const Text('Joe&dave',style:TextStyle(fontWeight:FontWeight.w900)),if(wide)Flexible(child:Text('  ·  '+businessName,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12,color:Colors.blueGrey)))]),
    actions:[PopupMenuButton<String>(onSelected:(v){if(v=='settings')setState(()=>current='settings');if(v=='logout')widget.onLogout();},itemBuilder:(_)=>const [PopupMenuItem(value:'settings',child:Text('Workspace settings')),PopupMenuItem(value:'logout',child:Text('Sign out'))])]),
@@ -115,6 +119,9 @@ class _WorkspaceState extends State<Workspace>{
  Widget menu()=>SafeArea(child:Column(children:[
   Padding(padding:const EdgeInsets.all(16),child:Text(businessName,style:const TextStyle(fontWeight:FontWeight.w800,color:navy))),
   ListTile(selected:current=='home',leading:const Icon(Icons.dashboard_outlined),title:const Text('Overview'),onTap:()=>choose('home')),
+  ListTile(selected:current=='business-settings',leading:const Icon(Icons.business_outlined),title:const Text('Business profile & branding'),onTap:()=>choose('business-settings')),
+  ListTile(selected:current=='team',leading:const Icon(Icons.manage_accounts_outlined),title:const Text('Team & permissions'),onTap:()=>choose('team')),
+  ListTile(selected:current=='inventory-import',leading:const Icon(Icons.file_upload_outlined),title:const Text('Inventory CSV import'),onTap:()=>choose('inventory-import')),
   Expanded(child:ListView(children:[
    for(final group in moduleGroups.entries)ExpansionTile(leading:Icon(groupIcons[group.key]??Icons.folder_outlined,color:blue),title:Text(group.key,style:const TextStyle(fontWeight:FontWeight.w700)),initiallyExpanded:group.value.contains(current),children:[
     for(final k in group.value)Builder(builder:(ctx){final m=moduleSpecs.firstWhere((x)=>x.key==k);return ListTile(dense:true,selected:current==k,title:Text(m.title),contentPadding:const EdgeInsets.only(left:54,right:12),onTap:()=>choose(k));})
@@ -271,3 +278,87 @@ class ErrorView extends StatelessWidget{
  @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(28),children:[const SizedBox(height:55),const Icon(Icons.cloud_off_outlined,size:50,color:Colors.blueGrey),const SizedBox(height:12),const Center(child:Text('Unable to load this workspace',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:navy))),const SizedBox(height:8),Text(message,textAlign:TextAlign.center,style:const TextStyle(color:Colors.blueGrey)),const SizedBox(height:14),Center(child:OutlinedButton.icon(onPressed:retry,icon:const Icon(Icons.refresh),label:const Text('Try again')))]);
 }
 String human(String s)=>s.replaceAll('_',' ').split(' ').map((w)=>w.isEmpty?w:w[0].toUpperCase()+w.substring(1)).join(' ');
+
+
+class BusinessSettingsPage extends StatefulWidget{
+ final String token;const BusinessSettingsPage({super.key,required this.token});
+ @override State<BusinessSettingsPage> createState()=>_BusinessSettingsPageState();
+}
+class _BusinessSettingsPageState extends State<BusinessSettingsPage>{
+ final form=GlobalKey<FormState>();final fields=<String,TextEditingController>{};
+ final picker=ImagePicker();bool loading=true,saving=false;String invoice='modern',receipt='classic',currency='NGN',brandColor='#245b3a',logo='';String? error;
+ static const currencies=['NGN','USD','GBP','EUR','CAD','GHS','KES','ZAR'];
+ @override void initState(){super.initState();for(final k in ['display_name','business_address','business_phone','business_email','tax_id'])fields[k]=TextEditingController();load();}
+ Future<void> load()async{try{final d=await Api(widget.token).get('/business');if(!mounted)return;setState((){for(final k in fields.keys)fields[k]!.text=(d[k]??'').toString();currency=(d['currency_code']??'NGN').toString();invoice=(d['invoice_template']??'modern').toString();receipt=(d['receipt_template']??'classic').toString();brandColor=(d['brand_color']??'#245b3a').toString();logo=(d['logo_data_url']??'').toString();loading=false;});}catch(e){if(mounted)setState(()=>{loading=false,error=e.toString()});}}
+ Future<void> pickLogo()async{try{final x=await picker.pickImage(source:ImageSource.gallery,imageQuality:75,maxWidth:900);if(x==null)return;final bytes=await x.readAsBytes();if(bytes.length>90000){setState(()=>error='Choose a logo image under 90 KB.');return;}final ext=x.name.toLowerCase().endsWith('.png')?'png':x.name.toLowerCase().endsWith('.webp')?'webp':'jpeg';setState(()=>{logo='data:image/'+ext+';base64,'+base64Encode(bytes),error=null});}catch(e){setState(()=>error=e.toString());}}
+ Future<void> save()async{if(!form.currentState!.validate())return;setState(()=>{saving=true,error=null});try{await Api(widget.token).put('/business',{'display_name':fields['display_name']!.text.trim(),'business_address':fields['business_address']!.text.trim(),'business_phone':fields['business_phone']!.text.trim(),'business_email':fields['business_email']!.text.trim(),'tax_id':fields['tax_id']!.text.trim(),'currency_code':currency,'invoice_template':invoice,'receipt_template':receipt,'brand_color':brandColor,'logo_data_url':logo});if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Business profile saved.')));}catch(e){setState(()=>error=e.toString());}finally{if(mounted)setState(()=>saving=false);}}
+ @override void dispose(){for(final c in fields.values)c.dispose();super.dispose();}
+ @override Widget build(BuildContext context){if(loading)return const Center(child:CircularProgressIndicator());return ListView(padding:const EdgeInsets.all(20),children:[
+  const Text('Business profile & branding',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:navy)),
+  const Text('These details appear on business documents and workspace identity.',style:TextStyle(color:Colors.blueGrey)),
+  const SizedBox(height:16),Form(key:form,child:Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(children:[
+   TextFormField(controller:fields['display_name'],decoration:const InputDecoration(labelText:'Business display name'),validator:(v)=>v==null||v.trim().isEmpty?'Business name is required.':null),
+   const SizedBox(height:10),TextFormField(controller:fields['business_address'],decoration:const InputDecoration(labelText:'Business address')),
+   const SizedBox(height:10),TextFormField(controller:fields['business_phone'],decoration:const InputDecoration(labelText:'Business phone'),keyboardType:TextInputType.phone),
+   const SizedBox(height:10),TextFormField(controller:fields['business_email'],decoration:const InputDecoration(labelText:'Business email'),keyboardType:TextInputType.emailAddress),
+   const SizedBox(height:10),TextFormField(controller:fields['tax_id'],decoration:const InputDecoration(labelText:'Tax / registration ID')),
+   const SizedBox(height:12),DropdownButtonFormField<String>(value:currency,decoration:const InputDecoration(labelText:'Base currency'),items:[for(final c in currencies)DropdownMenuItem(value:c,child:Text(c))],onChanged:(v)=>setState(()=>currency=v??currency)),
+   const SizedBox(height:12),DropdownButtonFormField<String>(value:invoice,decoration:const InputDecoration(labelText:'Invoice design'),items:const [DropdownMenuItem(value:'modern',child:Text('Modern')),DropdownMenuItem(value:'classic',child:Text('Classic')),DropdownMenuItem(value:'minimal',child:Text('Minimal'))],onChanged:(v)=>setState(()=>invoice=v??invoice)),
+   const SizedBox(height:12),DropdownButtonFormField<String>(value:receipt,decoration:const InputDecoration(labelText:'Receipt design'),items:const [DropdownMenuItem(value:'classic',child:Text('Classic')),DropdownMenuItem(value:'modern',child:Text('Modern')),DropdownMenuItem(value:'minimal',child:Text('Minimal'))],onChanged:(v)=>setState(()=>receipt=v??receipt)),
+   const SizedBox(height:16),Row(children:[if(logo.isNotEmpty)Container(width:64,height:64,padding:const EdgeInsets.all(4),decoration:BoxDecoration(border:Border.all(color:const Color(0xFFE0E7F0)),borderRadius:BorderRadius.circular(12)),child:Image.memory(base64Decode(logo.split(',').last),fit:BoxFit.contain)),const SizedBox(width:10),Expanded(child:OutlinedButton.icon(onPressed:pickLogo,icon:const Icon(Icons.image_outlined),label:const Text('Choose business logo')))]),
+   if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:Colors.red))),
+   const SizedBox(height:16),SizedBox(width:double.infinity,child:FilledButton(onPressed:saving?null:save,style:FilledButton.styleFrom(backgroundColor:blue),child:saving?const CircularProgressIndicator(color:Colors.white):const Text('Save business profile')))
+  ]))))
+ ]);}
+}
+
+class TeamMembersPage extends StatefulWidget{
+ final String token;const TeamMembersPage({super.key,required this.token});
+ @override State<TeamMembersPage> createState()=>_TeamMembersPageState();
+}
+class _TeamMembersPageState extends State<TeamMembersPage>{
+ late Future<Map<String,dynamic>> future;final email=TextEditingController();String role='sales';bool adding=false;
+ @override void initState(){super.initState();future=Api(widget.token).get('/workspace/members');}
+ Future<void> refresh()async{setState(()=>future=Api(widget.token).get('/workspace/members'));await future;}
+ Future<void> add()async{if(email.text.trim().isEmpty)return;setState(()=>adding=true);try{await Api(widget.token).post('/workspace/members',{'email':email.text.trim(),'role':role});email.clear();await refresh();if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Team member added.')));}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}finally{if(mounted)setState(()=>adding=false);}}
+ Future<void> remove(String id)async{try{await Api(widget.token).delete('/workspace/members/'+id);await refresh();}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}}
+ @override void dispose(){email.dispose();super.dispose();}
+ @override Widget build(BuildContext context)=>FutureBuilder<Map<String,dynamic>>(future:future,builder:(c,s){if(s.connectionState==ConnectionState.waiting)return const Center(child:CircularProgressIndicator());if(s.hasError)return ErrorView(message:s.error.toString(),retry:refresh);final d=s.data??{},members=(d['members'] as List? ??[]).whereType<Map>().toList();final canManage=['owner','admin'].contains(d['current_role']);return RefreshIndicator(onRefresh:refresh,child:ListView(padding:const EdgeInsets.all(18),children:[
+  const Text('Team & permissions',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:navy)),
+  const Text('Add existing Joe&dave accounts and assign least-privilege roles.',style:TextStyle(color:Colors.blueGrey)),
+  if(canManage)Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(children:[
+   TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Registered user email')),
+   const SizedBox(height:10),DropdownButtonFormField<String>(value:role,decoration:const InputDecoration(labelText:'Workspace role'),items:const [DropdownMenuItem(value:'admin',child:Text('Administrator')),DropdownMenuItem(value:'accountant',child:Text('Accountant')),DropdownMenuItem(value:'sales',child:Text('Sales')),DropdownMenuItem(value:'inventory',child:Text('Inventory')),DropdownMenuItem(value:'hr',child:Text('HR')),DropdownMenuItem(value:'viewer',child:Text('Read-only viewer'))],onChanged:(v)=>setState(()=>role=v??role)),
+   const SizedBox(height:10),SizedBox(width:double.infinity,child:FilledButton(onPressed:adding?null:add,child:adding?const CircularProgressIndicator(color:Colors.white):const Text('Add team member'))),
+   const Text('The person must already have a Joe&dave account. Email invitations are not enabled.',style:TextStyle(fontSize:12,color:Colors.blueGrey))
+  ]))),
+  const SizedBox(height:10),Text('Workspace members ('+members.length.toString()+')',style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17,color:navy)),
+  for(final m in members)Card(child:ListTile(leading:const CircleAvatar(child:Icon(Icons.person_outline)),title:Text((m['email']??'').toString()),subtitle:Text((m['role']??'').toString()),trailing:(m['role']=='owner'||!canManage)?null:IconButton(onPressed:()=>remove(m['user_id'].toString()),icon:const Icon(Icons.person_remove_outlined,color:Colors.red))))
+ ]));});
+}
+
+class InventoryImportPage extends StatefulWidget{
+ final String token;const InventoryImportPage({super.key,required this.token});
+ @override State<InventoryImportPage> createState()=>_InventoryImportPageState();
+}
+class _InventoryImportPageState extends State<InventoryImportPage>{
+ final csv=TextEditingController(text:'sku,name,quantity,unit,warehouse,reorder_level,cost_minor,sale_price_minor\\nSKU-001,Sample item,10,pcs,Main,2,50000,75000');
+ bool busy=false;String? result;
+ List<String> parseCsvLine(String line){final out=<String>[];final b=StringBuffer();bool quoted=false;for(var i=0;i<line.length;i++){final ch=line[i];if(ch=='"'){if(quoted&&i+1<line.length&&line[i+1]=='"'){b.write('"');i++;}else{quoted=!quoted;}}else if(ch==','&&!quoted){out.add(b.toString().trim());b.clear();}else{b.write(ch);}}out.add(b.toString().trim());return out;}
+ Future<void> importRows()async{
+  final lines=csv.text.split(RegExp(r'\\r?\\n')).where((x)=>x.trim().isNotEmpty).toList();if(lines.length<2){setState(()=>result='Add a header row and at least one inventory row.');return;}
+  final headers=parseCsvLine(lines.first).map((x)=>x.toLowerCase()).toList();final rows=<Map<String,dynamic>>[];
+  for(final line in lines.skip(1)){final values=parseCsvLine(line);final row=<String,dynamic>{};for(var i=0;i<headers.length&&i<values.length;i++){final key=headers[i],v=values[i];if(v.isNotEmpty)row[key]=['quantity','qty','reorder_level','cost_minor','sale_price_minor'].contains(key)?num.tryParse(v)??v:v;}rows.add(row);}
+  if(rows.length>500){setState(()=>result='Import is limited to 500 rows per batch.');return;}
+  setState(()=>{busy=true,result=null});try{final d=await Api(widget.token).post('/inventory/import',{'rows':rows});setState(()=>result='Successfully imported '+(d['imported']??rows.length).toString()+' inventory rows.');}catch(e){setState(()=>result=e.toString());}finally{setState(()=>busy=false);}
+ }
+ @override void dispose(){csv.dispose();super.dispose();}
+ @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(20),children:[
+  const Text('Inventory CSV import',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:navy)),
+  const Text('Import or update stock items in batches of up to 500 rows. Matching SKU values update existing items and create stock adjustments.',style:TextStyle(color:Colors.blueGrey)),
+  const SizedBox(height:14),const Card(child:Padding(padding:EdgeInsets.all(14),child:Text('Required columns: name (or item_code) and quantity. Optional: sku, unit, warehouse, reorder_level, cost_minor, sale_price_minor. Amount fields are in minor currency units.'))),
+  const SizedBox(height:12),TextField(controller:csv,minLines:12,maxLines:20,decoration:const InputDecoration(labelText:'Paste CSV data',alignLabelWithHint:true,border:OutlineInputBorder())),
+  if(result!=null)Padding(padding:const EdgeInsets.symmetric(vertical:12),child:Text(result!,style:TextStyle(color:result!.startsWith('Successfully')?Colors.green:Colors.red))),
+  const SizedBox(height:12),FilledButton.icon(onPressed:busy?null:importRows,icon:const Icon(Icons.file_upload_outlined),label:busy?const Text('Importing…'):const Text('Validate and import'))
+ ]);
+}
