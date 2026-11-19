@@ -42,7 +42,7 @@ else fail('Capacitor identity and HTTPS remote origin configured','Review appId,
 const gradleCandidates = ['android/app/build.gradle','android/app/build.gradle.kts','android/variables.gradle'];
 const nativeGradle = gradleCandidates.find(p=>existsSync(resolve(root,p)));
 const gradleText = nativeGradle ? read(nativeGradle) : null;
-const sdkMatch = gradleText && (gradleText.match(/targetSdk(?:Version)?\\s*(?:=\\s*)?(\\d+)/) || gradleText.match(/targetSdk\\s*=\\s*(\\d+)/));
+const sdkMatch = gradleText && (gradleText.match(/targetSdk(?:Version)?\s*(?:=\s*)?(\d+)/) || gradleText.match(/targetSdk\s*=\s*(\d+)/));
 if (!gradleText) block('Android native release project present','Android project is not checked into this product directory; generate/sync it, then configure release signing and API 36+.');
 else if (sdkMatch && Number(sdkMatch[1]) >= 36) pass('Android target SDK is API 36+');
 else block('Android target SDK is API 36+','Native Gradle config was found, but API 36+ was not confirmed.');
