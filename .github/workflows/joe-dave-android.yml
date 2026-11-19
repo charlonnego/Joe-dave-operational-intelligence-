@@ -42,10 +42,8 @@ jobs:
           sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
       - name: Install Capacitor dependencies
         run: npm install --no-audit --no-fund
-      - name: Prepare Capacitor web directory
-        run: |
-          mkdir -p www
-          printf '%s\n' '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>Joe&dave remote workspace</body></html>' > www/index.html
+      - name: Bundle the real Joe&dave web application
+        run: npm run android:prepare
       - name: Generate Android project
         run: npx cap add android
       - name: Set and verify target API 36
