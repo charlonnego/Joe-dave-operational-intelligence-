@@ -31,3 +31,15 @@ The source contains workflows for finance, invoices/receipts, purchasing, invent
 ## Ownership and licensing
 
 This repository separates the Joe & Dave implementation from the upstream ERPNext/Frappe codebase. Third-party software remains governed by its own licence and attribution terms. Any sale must distinguish original project code from open-source components and separately address hosting, domain, database, and account transferability.
+
+## Product positioning and launch focus
+
+Joe & Dave is positioned as an **intelligent business operations platform for growing SMEs**. The first commercial wedge is deliberately focused on three connected workflows:
+
+1. **Sales and cash collection** — customers, quotations, invoices, receipts and receivables visibility.
+2. **Stock and purchasing control** — item records, warehouses, stock movements, supplier purchasing and receipt posting.
+3. **Operational visibility** — trustworthy summaries and exception prompts calculated from the signed-in business's persisted records.
+
+HR/payroll, manufacturing, projects, helpdesk and sales intelligence remain supporting modules. Their presence in the interface must not be marketed as proof of statutory, financial or operational compliance. See the [product README](products/joe-dave-operations-intelligence/README.md), [pilot plan](docs/PRODUCT-POSITIONING-AND-PILOT.md), and [Play release gate](docs/PLAY-STORE-RELEASE-GATE.md).
+
+The core application and operational modules use the same-origin Pages API path (`/api`) so browser and Capacitor traffic follows one gateway. This avoids separate API origins drifting between the core workspace and operational modules.
