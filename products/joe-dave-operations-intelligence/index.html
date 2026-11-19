@@ -505,7 +505,7 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
 
 <script>
 (() => {
- const API='/api';
+ const API=window.Capacitor?.isNativePlatform?.()?'https://joe-dave-operations-intelligence.pages.dev/api':'/api';
  const $=id=>document.getElementById(id);
  let token=localStorage.getItem('jd_session')||'', business=null, authMode='login', customers=[], invoices=[], receipts=[], draftRestoredFor='';
  const money=(minor,cur)=>new Intl.NumberFormat(undefined,{style:'currency',currency:cur||'NGN'}).format((Number(minor)||0)/100);
