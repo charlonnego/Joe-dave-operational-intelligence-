@@ -6,7 +6,7 @@ This directory contains the native Flutter application. It does not embed, rende
 - API: authenticated HTTPS requests to the existing Joe&dave Operations Worker.
 - Authentication: existing `/auth/login`, `/auth/register`, `/auth/me`, and `/auth/logout` endpoints.
 - Session token: stored in Android shared preferences and sent as a Bearer token.
-- API root: `https://joe-dave-operations-api.uchechukwuanuforo.workers.dev`.
+- API root: `https://joe-dave-operations-intelligence.pages.dev/api` (same-origin Cloudflare Pages gateway; it forwards to the existing API Worker).
 - Web/PWA: remains a separate product surface and must be preserved.
 
 ## Android build outputs
