@@ -1,4 +1,3 @@
-import { pbkdf2Sync } from "node:crypto";
 const corsHeaders = origin => ({
  "Access-Control-Allow-Origin": origin || "https://joe-dave-operations-intelligence.pages.dev",
  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
@@ -10,11 +9,11 @@ const uid=()=>crypto.randomUUID();
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 const digest=async s=>hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)));
 const PASSWORD_ITERATIONS=210000;
-// Use Cloudflare's native Node.js crypto implementation for PBKDF2.
-// This avoids the Worker WebCrypto NotSupportedError observed in production,
-// while retaining the existing PBKDF2-SHA256 storage format and iteration count.
-function pbkdf2Sha256(password,salt,iterations){
- return new Uint8Array(pbkdf2Sync(password,salt,iterations,32,"sha256"));
+// Derive PBKDF2-SHA256 using Workers WebCrypto; preserve existing stored hashes.
+async function pbkdf2Sha256(password,salt,iterations){
+ const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
+ const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations,hash:"SHA-256"},key,256);
+ return new Uint8Array(bits);
 }
 async function hashPassword(password,saltHex,iterations=PASSWORD_ITERATIONS){
  const salt=saltHex?Uint8Array.from(saltHex.match(/../g).map(x=>parseInt(x,16))):crypto.getRandomValues(new Uint8Array(16));
@@ -620,5 +619,13 @@ export default {async fetch(req,env){
   }
 
   return json({error:"Endpoint not found."},404,origin);
- }catch(e){const reference=uid();console.error("jd_api_request_failed",JSON.stringify({reference,path,method:req.method,stage,errorType:e?.name||"Error"}));return json({error:path==="/auth/register"?"We could not finish creating your account. Please retry once; if it still fails, share reference "+reference+".":"Request could not be completed. No internal details were exposed.",reference},500,origin);}
+ }catch(e){
+  const reference=uid(),errorType=String(e?.name||"Error"),errorMessage=String(e?.message||"Unknown error").slice(0,500),errorStack=String(e?.stack||"").slice(0,3000);
+  console.error("jd_api_request_failed",JSON.stringify({reference,path,method:req.method,stage,errorType,errorMessage,errorStack}));
+  try{
+   await env.DB.prepare("CREATE TABLE IF NOT EXISTS jd_error_events (reference TEXT PRIMARY KEY,path TEXT NOT NULL,method TEXT NOT NULL,stage TEXT NOT NULL,error_type TEXT NOT NULL,error_message TEXT NOT NULL,error_stack TEXT,created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))").run();
+   await env.DB.prepare("INSERT INTO jd_error_events(reference,path,method,stage,error_type,error_message,error_stack) VALUES(?,?,?,?,?,?,?)").bind(reference,path,req.method,stage,errorType,errorMessage,errorStack).run();
+  }catch(logError){console.error("jd_error_event_persist_failed",JSON.stringify({reference,errorType:logError?.name||"Error",message:String(logError?.message||"").slice(0,300)}));}
+  return json({error:path==="/auth/register"?"We could not finish creating your account. Please retry once; if it still fails, share reference "+reference+".":"Request could not be completed. No internal details were exposed.",reference},500,origin);
+ }
 }};
