@@ -432,7 +432,7 @@ class _InvoicePageState extends State<InvoicePage>{
   Padding(padding:const EdgeInsets.all(18),child:Row(children:[const Expanded(child:Text('Invoices',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:navy))),FilledButton.icon(onPressed:create,icon:const Icon(Icons.add),label:const Text('New invoice'))])),
   Expanded(child:FutureBuilder<List<Map<String,dynamic>>>(future:future,builder:(c,s){
    if(s.connectionState==ConnectionState.waiting)return const Center(child:CircularProgressIndicator());if(s.hasError)return ErrorView(message:s.error.toString(),retry:refresh);
-   final rows=s.data??[];return RefreshIndicator(onRefresh:refresh,child:rows.isEmpty?const ListView(children:[SizedBox(height:90),Center(child:Text('No invoices yet.'))]):ListView.separated(padding:const EdgeInsets.all(14),itemCount:rows.length,separatorBuilder:(_,__)=>const SizedBox(height:8),itemBuilder:(c,i){final r=rows[i];return Card(child:ListTile(leading:const CircleAvatar(backgroundColor:Color(0xFFEAF1FC),child:Icon(Icons.receipt_long_outlined,color:blue)),title:Text((r['invoice_number']??'Invoice').toString(),style:const TextStyle(fontWeight:FontWeight.w800,color:navy)),subtitle:Text((r['customer_name']??'Walk-in customer').toString()+'  ·  '+(r['status']??'').toString()+'\\n'+(r['issue_date']??'').toString()),isThreeLine:true,trailing:Text((r['total_minor']??0).toString(),style:const TextStyle(fontWeight:FontWeight.w800)),onTap:()=>detail(r)));}));
+   final rows=s.data??[];return RefreshIndicator(onRefresh:refresh,child:rows.isEmpty?ListView(children:[const SizedBox(height:90),const Center(child:Text('No invoices yet.'))]):ListView.separated(padding:const EdgeInsets.all(14),itemCount:rows.length,separatorBuilder:(_,__)=>const SizedBox(height:8),itemBuilder:(c,i){final r=rows[i];return Card(child:ListTile(leading:const CircleAvatar(backgroundColor:Color(0xFFEAF1FC),child:Icon(Icons.receipt_long_outlined,color:blue)),title:Text((r['invoice_number']??'Invoice').toString(),style:const TextStyle(fontWeight:FontWeight.w800,color:navy)),subtitle:Text((r['customer_name']??'Walk-in customer').toString()+'  ·  '+(r['status']??'').toString()+'\\n'+(r['issue_date']??'').toString()),isThreeLine:true,trailing:Text((r['total_minor']??0).toString(),style:const TextStyle(fontWeight:FontWeight.w800)),onTap:()=>detail(r)));}));
   }))
  ]);
 }
@@ -481,7 +481,7 @@ class _InvoiceDetailState extends State<InvoiceDetail>{
    for(final l in lines)ListTile(title:Text((l['description']??'').toString()),subtitle:Text('Qty '+l['quantity'].toString()+' × '+l['unit_price_minor'].toString()+' minor'),trailing:Text((l['line_subtotal_minor']??0).toString())),
    const Divider(),ListTile(title:const Text('Invoice total'),trailing:Text((inv['total_minor']??0).toString(),style:const TextStyle(fontWeight:FontWeight.w800))),
    ListTile(title:const Text('Paid'),trailing:Text((inv['paid_minor']??0).toString())),
-   ListTile(title:const Text('Outstanding'),trailing:Text(outstanding.toString(),style:const TextStyle(fontWeight:FontWeight.w800,color:brandBlue))),
+   ListTile(title:const Text('Outstanding'),trailing:Text(outstanding.toString(),style:const TextStyle(fontWeight:FontWeight.w800,color:blue))),
    if(receipts.isNotEmpty)const Padding(padding:EdgeInsets.all(8),child:Text('Payments',style:TextStyle(fontWeight:FontWeight.w800))),
    for(final r in receipts)ListTile(dense:true,title:Text((r['payment_method']??'').toString()),subtitle:Text((r['received_at']??'').toString()),trailing:Text((r['amount_minor']??0).toString()))
   ])),
