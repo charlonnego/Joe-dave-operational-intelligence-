@@ -39,11 +39,12 @@ else fail('Service worker excludes API requests from shell caching','API respons
 if (/appId:\s*['"][^'"]+['"]/.test(cap) && /appName:\s*['"][^'"]+['"]/.test(cap) && /https:\/\//.test(cap) && /cleartext:\s*false/.test(cap)) pass('Capacitor identity and HTTPS remote origin configured');
 else fail('Capacitor identity and HTTPS remote origin configured','Review appId, appName, HTTPS server URL and cleartext=false');
 
-const gradlePath = 'android/app/build.gradle';
-const gradleKtsPath = 'android/app/build.gradle.kts';
-const nativeGradle = existsSync(resolve(root,gradlePath)) ? read(gradlePath) : existsSync(resolve(root,gradleKtsPath)) ? read(gradleKtsPath) : null;
-if (!nativeGradle) block('Android native release project present','Android project is not checked into this product directory; generate/sync it, then configure release signing and API 36+.');
-else if (/targetSdk(?:Version)?\s*(?:=\s*)?36/.test(nativeGradle) || /targetSdk\s*=\s*36/.test(nativeGradle)) pass('Android target SDK is API 36+');
+const gradleCandidates = ['android/app/build.gradle','android/app/build.gradle.kts','android/variables.gradle'];
+const nativeGradle = gradleCandidates.find(p=>existsSync(resolve(root,p)));
+const gradleText = nativeGradle ? read(nativeGradle) : null;
+const sdkMatch = gradleText && (gradleText.match(/targetSdk(?:Version)?\\s*(?:=\\s*)?(\\d+)/) || gradleText.match(/targetSdk\\s*=\\s*(\\d+)/));
+if (!gradleText) block('Android native release project present','Android project is not checked into this product directory; generate/sync it, then configure release signing and API 36+.');
+else if (sdkMatch && Number(sdkMatch[1]) >= 36) pass('Android target SDK is API 36+');
 else block('Android target SDK is API 36+','Native Gradle config was found, but API 36+ was not confirmed.');
 
 const failures = checks.filter(x=>x.status==='FAIL').length;
