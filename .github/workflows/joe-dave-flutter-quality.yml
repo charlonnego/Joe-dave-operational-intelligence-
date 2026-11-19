@@ -1,5 +1,6 @@
-name: Joe&dave Flutter quality gate
+name: Joe&dave Flutter quality and Android test build
 on:
+  workflow_dispatch:
   push:
     branches:
       - "international-standard/**"
@@ -12,6 +13,7 @@ on:
       - ".github/workflows/joe-dave-flutter-quality.yml"
 permissions:
   contents: read
+  actions: read
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -24,20 +26,30 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Generate missing native platform scaffolding
+      - name: Generate missing native Android scaffolding
         if: ${{ !hashFiles('products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/android/app/build.gradle', 'products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/android/app/build.gradle.kts') }}
-        run: flutter create --platforms=android,ios --org com.joedave --project-name joe_dave_operations .
+        run: flutter create --platforms=android --org com.joedave --project-name joe_dave_operations .
       - name: Install dependencies
         run: flutter pub get
       - name: Analyze Dart source
         run: flutter analyze --no-fatal-infos
       - name: Run widget tests
         run: flutter test
-      - name: Validate generated Android project configuration
+      - name: Verify Android SDK configuration
         run: |
           test -f android/app/build.gradle || test -f android/app/build.gradle.kts
           grep -R 'compileSdk' android/app
+      - name: Build installable debug APK for device testing
+        run: flutter build apk --debug
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: joe-and-dave-android-debug-apk
+          path: products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
   ios-simulator:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: macos-15
     defaults:
       run:
@@ -48,9 +60,9 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Generate missing native platform scaffolding
+      - name: Generate missing iOS scaffolding
         if: ${{ !hashFiles('products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/ios/Runner.xcodeproj/project.pbxproj') }}
-        run: flutter create --platforms=android,ios --org com.joedave --project-name joe_dave_operations .
+        run: flutter create --platforms=ios --org com.joedave --project-name joe_dave_operations .
       - name: Install dependencies
         run: flutter pub get
       - name: Analyze Dart source
