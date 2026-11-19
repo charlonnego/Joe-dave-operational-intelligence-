@@ -10,6 +10,8 @@ New Android apps and app updates must target **Android 16 / API 36 or higher** u
 - The web application is configured to load the hosted Pages application over HTTPS.
 - The product directory has the Capacitor package and PWA manifest/service worker.
 - The Android native project and its Gradle target SDK/release signing configuration were not present at the inspected paths. A signed Android App Bundle therefore has not been verified.
+- The published privacy policy still contains a pre-launch instruction to add the operator's registered legal identity, address and dedicated privacy contact.
+- The current account-deletion endpoint records a pending request and permits cancellation; no request-processing/deletion executor was found in the inspected Worker source. The actual deletion and legally required retention process must be implemented and tested.
 - A successful Pages or Worker deployment would not prove Android packaging, device compatibility, privacy compliance or end-to-end acceptance.
 
 ## Required before submission
@@ -31,10 +33,10 @@ New Android apps and app updates must target **Android 16 / API 36 or higher** u
 - [ ] Verify role restrictions for owner, admin, accountant, sales, inventory, HR and viewer.
 - [ ] Review Worker routes, input validation, rate limits, CORS and audit events.
 - [ ] Run a real backup and restore exercise.
-- [ ] Verify account deletion requests through completion, including what data is retained and why.
+- [ ] Implement and test account-deletion request processing through completion (the current API only records/cancels a pending request), including identity checks, shared-workspace ownership, retained business records, backups and user notification.
 
 ### Store policy and listing
-- [ ] Publish a public privacy policy that accurately describes data collected, processing purposes, retention, sharing, security and contact details.
+- [ ] Publish a public privacy policy with the operator's registered legal identity, registered address and dedicated privacy contact, accurately describing data collected, processing purposes, retention, sharing and security.
 - [ ] Add a working public account-deletion URL and an in-app deletion path where applicable.
 - [ ] Complete Data safety, app access instructions, content rating, target audience and ads declarations.
 - [ ] Prepare store icon, screenshots from the real app, short description, full description and support contact.
