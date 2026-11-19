@@ -1,4 +1,4 @@
-name: Joe&dave Flutter quality and Android test build
+name: Joe&dave Flutter quality and optimized Android build
 on:
   workflow_dispatch:
   push:
@@ -39,15 +39,39 @@ jobs:
         run: |
           test -f android/app/build.gradle || test -f android/app/build.gradle.kts
           grep -R 'compileSdk' android/app
-      - name: Build installable debug APK for device testing
-        run: flutter build apk --debug
-      - name: Upload Android APK
+      - name: Build optimized per-architecture release APKs
+        run: |
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols
+      - name: Build optimized Play Store Android App Bundle
+        run: |
+          flutter build appbundle --release --obfuscate --split-debug-info=build/symbols
+      - name: Report Android package sizes
+        run: |
+          echo "Optimized release APK sizes:"
+          find build/app/outputs/flutter-apk -maxdepth 1 -name '*.apk' -type f -exec du -h {} \;
+          echo "Play Store App Bundle size:"
+          du -h build/app/outputs/bundle/release/app-release.aab
+      - name: Upload optimized per-ABI APKs for device testing
         uses: actions/upload-artifact@v4
         with:
-          name: joe-and-dave-android-debug-apk
-          path: products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/build/app/outputs/flutter-apk/app-debug.apk
+          name: joe-and-dave-android-release-apks-per-abi
+          path: products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Upload Play Store App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: joe-and-dave-android-play-store-aab
+          path: products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve Dart obfuscation symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: joe-and-dave-android-obfuscation-symbols
+          path: products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/build/symbols/**
+          if-no-files-found: error
+          retention-days: 90
   ios-simulator:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: macos-15
