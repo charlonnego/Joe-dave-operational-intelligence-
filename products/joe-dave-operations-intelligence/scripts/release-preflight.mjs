@@ -48,8 +48,10 @@ try {
 if (sw.includes('url.pathname.startsWith("/api/")') || sw.includes("url.pathname.startsWith('/api/')")) pass('Service worker excludes API requests from shell caching');
 else fail('Service worker excludes API requests from shell caching','API responses must not be cached by the app shell');
 
-if (/appId:\s*['"][^'"]+['"]/.test(cap) && /appName:\s*['"][^'"]+['"]/.test(cap) && /https:\/\//.test(cap) && /cleartext:\s*false/.test(cap)) pass('Capacitor identity and HTTPS remote origin configured');
-else fail('Capacitor identity and HTTPS remote origin configured','Review appId, appName, HTTPS server URL and cleartext=false');
+if (/appId:\s*['"][^'"]+['"]/.test(cap) && /appName:\s*['"][^'"]+['"]/.test(cap) && /webDir:\s*['"]www['"]/.test(cap) && !/server:\s*\{[\s\S]*?url:/.test(cap)) pass('Capacitor bundles local web assets without remote app loading');
+else fail('Capacitor bundles local web assets without remote app loading','Set webDir to www and remove server.url so the APK does not load the website remotely.');
+if (index.includes('https://joe-dave-operations-intelligence.pages.dev/api')) pass('Native app API points to the production Pages gateway');
+else fail('Native app API points to the production Pages gateway','Configure the native runtime to call the Pages API gateway.');
 
 const gradleCandidates = ['android/app/build.gradle','android/app/build.gradle.kts','android/variables.gradle'];
 const nativeGradle = gradleCandidates.find(p=>existsSync(resolve(root,p)));
