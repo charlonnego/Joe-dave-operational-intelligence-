@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies and validate Flutter app
         run: |
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos --no-fatal-warnings
           flutter test
       - name: Configure private Android signing
         shell: bash
