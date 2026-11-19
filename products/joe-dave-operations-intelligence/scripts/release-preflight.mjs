@@ -8,7 +8,7 @@ const pass = (name, detail='') => checks.push({status:'PASS',name,detail});
 const block = (name, detail) => checks.push({status:'BLOCK',name,detail});
 const fail = (name, detail) => checks.push({status:'FAIL',name,detail});
 
-for (const p of ['index.html','operations-modules.js','manifest.webmanifest','service-worker.js','capacitor.config.ts','functions/api/[[path]].js']) {
+for (const p of ['index.html','operations-modules.js','manifest.webmanifest','service-worker.js','capacitor.config.ts','functions/api/[[path]].js','privacy.html']) {
   if (existsSync(resolve(root,p))) pass('Required PWA source exists',p);
   else fail('Required PWA source exists',p+' is missing');
 }
@@ -19,6 +19,7 @@ const manifestText = read('manifest.webmanifest');
 const sw = read('service-worker.js');
 const cap = read('capacitor.config.ts');
 const gateway = read('functions/api/[[path]].js');
+const privacy = read('privacy.html');
 
 if (index.includes("const API='/api'") && index.includes("fetch('/api/health'")) pass('Core app uses same-origin API gateway');
 else fail('Core app uses same-origin API gateway','Expected /api and /api/health');
@@ -28,6 +29,9 @@ else fail('Operational modules use same-origin API gateway','Remove direct Worke
 
 if (gateway.includes('incoming.pathname.replace') && gateway.includes('fetch(new Request(upstream.toString(), init))')) pass('Pages API gateway proxies requests to the Worker');
 else fail('Pages API gateway proxies requests to the Worker','Check the Pages Functions catch-all route');
+
+if (privacy.includes('publish its registered legal identity') || privacy.includes('dedicated privacy contact')) block('Privacy policy operator identity and contact complete','The published policy still contains a pre-launch instruction to add the operator legal identity and dedicated privacy contact.');
+else block('Privacy policy operator identity and contact complete','Confirm the operator legal identity, registered address and dedicated privacy contact with the business owner before submission.');
 
 try {
   const manifest = JSON.parse(manifestText);
