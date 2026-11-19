@@ -121,13 +121,15 @@ class _WorkspaceState extends State<Workspace>{
    current=='team'?TeamMembersPage(token:widget.token):
    current=='business-settings'?BusinessSettingsPage(token:widget.token):
    current=='inventory-import'?InventoryImportPage(token:widget.token):
+   current=='more'?MoreModulesPage(onSelect:(v)=>setState(()=>current=v)):
+   current=='owner-console'?OwnerConsolePage(token:widget.token):
    spec.isNotEmpty?ModulePage(key:ValueKey(current),token:widget.token,spec:spec.first):
    sp.isNotEmpty?SpecialPage(key:ValueKey(current),token:widget.token,title:sp.first.$1,path:sp.first.$2):Dashboard(token:widget.token,onSelect:(v)=>setState(()=>current=v));
   return Scaffold(appBar:AppBar(title:Row(children:[const Icon(Icons.insights_rounded,color:blue),const SizedBox(width:8),const Text('Joe&dave',style:TextStyle(fontWeight:FontWeight.w900)),if(wide)Flexible(child:Text('  ·  '+businessName,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12,color:Colors.blueGrey)))]),
    actions:[PopupMenuButton<String>(onSelected:(v){if(v=='settings')setState(()=>current='settings');if(v=='logout')widget.onLogout();},itemBuilder:(_)=>const [PopupMenuItem(value:'settings',child:Text('Workspace settings')),PopupMenuItem(value:'logout',child:Text('Sign out'))])]),
    drawer:wide?null:Drawer(child:menu()),
    body:wide?Row(children:[SizedBox(width:285,child:menu()),const VerticalDivider(width:1),Expanded(child:page)]):page,
-   bottomNavigationBar:wide?null:NavigationBar(selectedIndex:current=='home'?0:1,onDestinationSelected:(i)=>setState(()=>current=i==0?'home':'settings'),destinations:const [NavigationDestination(icon:Icon(Icons.dashboard_outlined),label:'Overview'),NavigationDestination(icon:Icon(Icons.settings_outlined),label:'Settings')]));
+   bottomNavigationBar:wide?null:NavigationBar(selectedIndex:current=='home'?0:(current.startsWith('selling/')||current.startsWith('crm/')||current=='finance/invoices'?1:(current.startsWith('inventory/')||current=='inventory-import'?2:3)),onDestinationSelected:(i)=>setState(()=>current=switch(i){0=>'home',1=>'finance/invoices',2=>'inventory/items',_=>'more'}),destinations:const [NavigationDestination(icon:Icon(Icons.dashboard_outlined),label:'Overview'),NavigationDestination(icon:Icon(Icons.point_of_sale_outlined),label:'Sales'),NavigationDestination(icon:Icon(Icons.inventory_2_outlined),label:'Inventory'),NavigationDestination(icon:Icon(Icons.grid_view_rounded),label:'More')]));
  }
  Widget menu()=>SafeArea(child:Column(children:[
   Padding(padding:const EdgeInsets.all(16),child:Text(businessName,style:const TextStyle(fontWeight:FontWeight.w800,color:navy))),
@@ -135,6 +137,7 @@ class _WorkspaceState extends State<Workspace>{
   ListTile(selected:current=='business-settings',leading:const Icon(Icons.business_outlined),title:const Text('Business profile & branding'),onTap:()=>choose('business-settings')),
   ListTile(selected:current=='team',leading:const Icon(Icons.manage_accounts_outlined),title:const Text('Team & permissions'),onTap:()=>choose('team')),
   ListTile(selected:current=='inventory-import',leading:const Icon(Icons.file_upload_outlined),title:const Text('Inventory CSV import'),onTap:()=>choose('inventory-import')),
+  ListTile(selected:current=='owner-console',leading:const Icon(Icons.admin_panel_settings_outlined,color:blue),title:const Text('Platform owner console'),subtitle:const Text('Restricted platform access'),onTap:()=>choose('owner-console')),
   Expanded(child:ListView(children:[
    for(final group in moduleGroups.entries)ExpansionTile(leading:Icon(groupIcons[group.key]??Icons.folder_outlined,color:blue),title:Text(group.key,style:const TextStyle(fontWeight:FontWeight.w700)),initiallyExpanded:group.value.contains(current),children:[
     for(final k in group.value)Builder(builder:(ctx){final m=moduleSpecs.firstWhere((x)=>x.key==k);return ListTile(dense:true,selected:current==k,title:Text(m.title),contentPadding:const EdgeInsets.only(left:54,right:12),onTap:()=>choose(k));})
@@ -145,6 +148,98 @@ class _WorkspaceState extends State<Workspace>{
   ListTile(leading:const Icon(Icons.logout),title:const Text('Sign out'),onTap:widget.onLogout)
  ]));
  void choose(String k){setState(()=>current=k);if(MediaQuery.of(context).size.width<=900)Navigator.pop(context);}
+}
+
+
+class MoreModulesPage extends StatelessWidget {
+ final ValueChanged<String> onSelect;
+ const MoreModulesPage({super.key,required this.onSelect});
+ @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(18),children:[
+  const Text('All modules',style:TextStyle(fontSize:26,fontWeight:FontWeight.w900,color:navy)),
+  const Text('Explore the complete business workspace.',style:TextStyle(color:Colors.blueGrey)),
+  const SizedBox(height:12),
+  Card(child:ListTile(leading:const CircleAvatar(child:Icon(Icons.admin_panel_settings_outlined)),title:const Text('Platform owner console',style:TextStyle(fontWeight:FontWeight.w800)),subtitle:const Text('Platform-wide account and plan controls'),trailing:const Icon(Icons.chevron_right),onTap:()=>onSelect('owner-console'))),
+  for(final group in moduleGroups.entries)Card(child:ExpansionTile(leading:Icon(groupIcons[group.key]??Icons.folder_outlined,color:blue),title:Text(group.key,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(group.value.length.toString()+' modules'),children:[
+   for(final key in group.value)Builder(builder:(context){final matches=moduleSpecs.where((m)=>m.key==key);if(matches.isEmpty)return const SizedBox.shrink();final m=matches.first;return ListTile(title:Text(m.title),leading:const Icon(Icons.chevron_right),onTap:()=>onSelect(key));})
+  ])),
+  Card(child:ExpansionTile(leading:const Icon(Icons.insights_rounded,color:blue),title:const Text('Sales Intelligence',style:TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(special.length.toString()+' modules'),children:[
+   for(final item in special)ListTile(title:Text(item.$1),onTap:()=>onSelect(item.$2))
+  ])),
+ ]);
+}
+
+class OwnerConsolePage extends StatefulWidget {
+ final String token;
+ const OwnerConsolePage({super.key,required this.token});
+ @override State<OwnerConsolePage> createState()=>_OwnerConsolePageState();
+}
+class _OwnerConsolePageState extends State<OwnerConsolePage> {
+ late Future<Map<String,dynamic>> future;
+ bool busy=false;
+ @override void initState(){super.initState();future=load();}
+ Future<Map<String,dynamic>> load()=>Api(widget.token).get('/platform/overview');
+ Future<void> refresh()async{setState(()=>future=load());await future;}
+ Future<void> change(Map business,String action)async{
+  final id=business['id']?.toString()??'';
+  if(id.isEmpty)return;
+  final plan=(business['plan_code']??'free').toString();
+  final status=(business['access_status']??'active').toString();
+  final nextPlan=action.startsWith('plan:')?action.substring(5):plan;
+  final nextStatus=action=='suspend'?'suspended':(action=='activate'?'active':status);
+  setState(()=>busy=true);
+  try{
+   await Api(widget.token).post('/platform/business/$id',{'plan_code':nextPlan,'access_status':nextStatus});
+   await refresh();
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Platform account updated.')));
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}
+  finally{if(mounted)setState(()=>busy=false);}
+ }
+ @override Widget build(BuildContext context)=>FutureBuilder<Map<String,dynamic>>(future:future,builder:(context,snapshot){
+  if(snapshot.connectionState==ConnectionState.waiting)return const Center(child:CircularProgressIndicator());
+  if(snapshot.hasError)return ErrorView(message:'Owner console access failed: '+snapshot.error.toString(),retry:refresh);
+  final data=snapshot.data??{};
+  final summary=data['summary'] as Map? ??{};
+  final rows=(data['businesses'] as List? ??[]).whereType<Map>().toList();
+  final billing=data['billing'] as Map? ??{};
+  return RefreshIndicator(onRefresh:refresh,child:ListView(padding:const EdgeInsets.all(18),children:[
+   Row(children:[const Expanded(child:Text('Platform owner console',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:navy))),IconButton(onPressed:refresh,icon:const Icon(Icons.refresh))]),
+   const Text('Global workspace administration. Access is verified by the API, not by this screen.',style:TextStyle(color:Colors.blueGrey)),
+   const SizedBox(height:16),
+   GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:MediaQuery.of(context).size.width>650?4:2,childAspectRatio:1.65,crossAxisSpacing:10,mainAxisSpacing:10,children:[
+    _OwnerMetric(label:'Businesses',value:summary['businesses']??0,icon:Icons.business_outlined),
+    _OwnerMetric(label:'Users',value:summary['users']??0,icon:Icons.people_outline),
+    _OwnerMetric(label:'New · 30 days',value:summary['new_businesses']??0,icon:Icons.trending_up),
+    _OwnerMetric(label:'Suspended',value:summary['suspended']??0,icon:Icons.pause_circle_outline),
+   ]),
+   const SizedBox(height:18),
+   const Text('Business workspaces',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:navy)),
+   if(rows.isEmpty)const Padding(padding:EdgeInsets.all(20),child:Text('No business workspaces found.')),
+   for(final b in rows)Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Row(children:[Expanded(child:Text((b['display_name']??b['legal_name']??'Unnamed business').toString(),style:const TextStyle(fontWeight:FontWeight.w800,fontSize:15))),PopupMenuButton<String>(enabled:!busy,onSelected:(v)=>change(b,v),itemBuilder:(_)=>[
+     const PopupMenuItem(value:'plan:free',child:Text('Set Free plan')),
+     const PopupMenuItem(value:'plan:starter',child:Text('Set Starter plan')),
+     const PopupMenuItem(value:'plan:growth',child:Text('Set Growth plan')),
+     const PopupMenuItem(value:'plan:business',child:Text('Set Business plan')),
+     PopupMenuItem(value:(b['access_status']=='suspended'?'activate':'suspend'),child:Text(b['access_status']=='suspended'?'Reactivate workspace':'Suspend workspace')),
+    ])]),
+    Text((b['owner_email']??'No owner email').toString(),style:const TextStyle(color:Colors.blueGrey,fontSize:12)),
+    const SizedBox(height:8),
+    Wrap(spacing:8,runSpacing:6,children:[
+     Chip(label:Text('Plan: '+(b['plan_code']??'free').toString())),
+     Chip(label:Text('Access: '+(b['access_status']??'active').toString())),
+     if(b['billing_status']!=null)Chip(label:Text('Billing: '+b['billing_status'].toString())),
+    ]),
+   ]))),
+   if(billing['provider_connected']!=true)const Padding(padding:EdgeInsets.only(top:10),child:Text('Billing provider is not connected. Plan changes here are administrative and do not confirm payment.',style:TextStyle(color:Colors.deepOrange,fontSize:12))),
+  ]));
+ });
+}
+class _OwnerMetric extends StatelessWidget {
+ final String label;final Object value;final IconData icon;
+ const _OwnerMetric({required this.label,required this.value,required this.icon});
+ @override Widget build(BuildContext context)=>Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
+  Icon(icon,color:blue),const SizedBox(height:8),Text(value.toString(),style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:navy)),Text(label,style:const TextStyle(fontSize:12,color:Colors.blueGrey))
+ ])));
 }
 
 class Dashboard extends StatefulWidget{
