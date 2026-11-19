@@ -99,7 +99,7 @@ class Workspace extends StatefulWidget{
 }
 class _WorkspaceState extends State<Workspace>{
  String current='home';
- String get businessName{final b=profile['business'];return b is Map?(b['display_name']??b['legal_name']??'Business workspace').toString():'Business workspace';}
+ String get businessName{final b=widget.profile['business'];return b is Map?(b['display_name']??b['legal_name']??'Business workspace').toString():'Business workspace';}
  @override Widget build(BuildContext context){
   final wide=MediaQuery.of(context).size.width>900;
   final spec=moduleSpecs.where((m)=>m.key==current).toList();
