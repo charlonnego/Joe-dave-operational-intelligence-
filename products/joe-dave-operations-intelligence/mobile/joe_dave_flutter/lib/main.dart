@@ -190,13 +190,13 @@ class _ModulePageState extends State<ModulePage>{
   try{await Api(widget.token).post(route,v);await refresh();snack('Record created.');}catch(e){snack(e.toString());}
  }
  Future<void> edit(Map<String,dynamic> row)async{
-  final id=row['id']?.toString();if(id==null||widget.spec.readOnly)return;
+  final id=row['id']?.toString();if(id==null||widget.spec.readOnly||widget.spec.apiRoute!=null)return;
   final v=await showDialog<Map<String,dynamic>>(context:context,builder:(_)=>RecordDialog(spec:widget.spec,initial:row));
   if(v==null)return;
   try{await Api(widget.token).put(route+'/'+id,v);await refresh();snack('Changes saved.');}catch(e){snack(e.toString());}
  }
  Future<void> remove(Map<String,dynamic> row)async{
-  final id=row['id']?.toString();if(id==null)return;
+  final id=row['id']?.toString();if(id==null||widget.spec.apiRoute!=null)return;
   final yes=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('Delete draft record?'),content:const Text('Posted or finalized records are protected by the server.'),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Delete'))]));
   if(yes!=true)return;try{await Api(widget.token).delete(route+'/'+id);await refresh();snack('Record deleted.');}catch(e){snack(e.toString());}
  }
@@ -211,13 +211,13 @@ class _ModulePageState extends State<ModulePage>{
    if(rows.isEmpty)return ListView(children:[const SizedBox(height:80),const Icon(Icons.inbox_outlined,size:48,color:Colors.blueGrey),Center(child:Text(query.isEmpty?'No '+widget.spec.title.toLowerCase()+' yet':'No matching records',style:const TextStyle(color:Colors.blueGrey))),if(!widget.spec.readOnly)Center(child:TextButton.icon(onPressed:add,icon:const Icon(Icons.add),label:const Text('Create record')))]);
    return ListView.separated(padding:const EdgeInsets.fromLTRB(14,0,14,24),itemCount:rows.length,separatorBuilder:(_,__)=>const SizedBox(height:7),itemBuilder:(c,i){
     final r=rows[i],title=primary(r),sub=r.entries.where((e)=>e.key!='id'&&e.value!=null&&e.key!=primaryKey(r)).take(3).map((e)=>human(e.key)+': '+e.value.toString()).join('  •  ');
-    return Card(child:ListTile(leading:CircleAvatar(backgroundColor:const Color(0xFFEAF1FC),child:Icon(groupIcons[widget.spec.group]??Icons.folder_outlined,color:blue)),title:Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w700,color:navy)),subtitle:sub.isEmpty?null:Text(sub,maxLines:2,overflow:TextOverflow.ellipsis),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='edit')edit(r);if(v=='delete')remove(r);if(v=='view')details(r);},itemBuilder:(_)=>[const PopupMenuItem(value:'view',child:Text('View details')),if(!widget.spec.readOnly)const PopupMenuItem(value:'edit',child:Text('Edit')),if(!widget.spec.readOnly)const PopupMenuItem(value:'delete',child:Text('Delete draft'))]),onTap:()=>details(r)));
+    return Card(child:ListTile(leading:CircleAvatar(backgroundColor:const Color(0xFFEAF1FC),child:Icon(groupIcons[widget.spec.group]??Icons.folder_outlined,color:blue)),title:Text(title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w700,color:navy)),subtitle:sub.isEmpty?null:Text(sub,maxLines:2,overflow:TextOverflow.ellipsis),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='edit')edit(r);if(v=='delete')remove(r);if(v=='view')details(r);},itemBuilder:(_)=>[const PopupMenuItem(value:'view',child:Text('View details')),if(!widget.spec.readOnly&&widget.spec.apiRoute==null)const PopupMenuItem(value:'edit',child:Text('Edit')),if(!widget.spec.readOnly&&widget.spec.apiRoute==null)const PopupMenuItem(value:'delete',child:Text('Delete draft'))]),onTap:()=>details(r)));
    });
   }))),
  ]);
  String primary(Map<String,dynamic> r){for(final k in ['name','display_name','title','subject','lead_name','employee_number','item_code','code','invoice_number','order_number','ticket_number','request_number','bill_number','quote_number']){if(r[k]!=null&&r[k].toString().isNotEmpty)return r[k].toString();}return 'Record';}
  String primaryKey(Map<String,dynamic> r){for(final k in ['name','display_name','title','subject','lead_name','employee_number','item_code','code','invoice_number','order_number','ticket_number','request_number','bill_number','quote_number']){if(r[k]!=null&&r[k].toString().isNotEmpty)return k;}return 'id';}
- void details(Map<String,dynamic> r)=>showModalBottomSheet(context:context,isScrollControlled:true,showDragHandle:true,builder:(c)=>SafeArea(child:Padding(padding:const EdgeInsets.all(20),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(widget.spec.title,style:const TextStyle(color:Colors.blueGrey)),Text(primary(r),style:const TextStyle(fontSize:22,fontWeight:FontWeight.w800,color:navy)),const SizedBox(height:12),Flexible(child:ListView(shrinkWrap:true,children:[for(final e in r.entries)if(e.key!='id'&&e.value!=null)ListTile(dense:true,title:Text(human(e.key),style:const TextStyle(color:Colors.blueGrey,fontSize:12)),subtitle:SelectableText(e.value.toString()))])),if(!widget.spec.readOnly)Row(children:[Expanded(child:OutlinedButton(onPressed:(){Navigator.pop(c);edit(r);},child:const Text('Edit'))),const SizedBox(width:8),Expanded(child:FilledButton(onPressed:(){Navigator.pop(c);remove(r);},child:const Text('Delete')))])]))));
+ void details(Map<String,dynamic> r)=>showModalBottomSheet(context:context,isScrollControlled:true,showDragHandle:true,builder:(c)=>SafeArea(child:Padding(padding:const EdgeInsets.all(20),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[Text(widget.spec.title,style:const TextStyle(color:Colors.blueGrey)),Text(primary(r),style:const TextStyle(fontSize:22,fontWeight:FontWeight.w800,color:navy)),const SizedBox(height:12),Flexible(child:ListView(shrinkWrap:true,children:[for(final e in r.entries)if(e.key!='id'&&e.value!=null)ListTile(dense:true,title:Text(human(e.key),style:const TextStyle(color:Colors.blueGrey,fontSize:12)),subtitle:SelectableText(e.value.toString()))])),if(!widget.spec.readOnly&&widget.spec.apiRoute==null)Row(children:[Expanded(child:OutlinedButton(onPressed:(){Navigator.pop(c);edit(r);},child:const Text('Edit'))),const SizedBox(width:8),Expanded(child:FilledButton(onPressed:(){Navigator.pop(c);remove(r);},child:const Text('Delete')))])]))));
 }
 
 class RecordDialog extends StatefulWidget{
@@ -415,7 +415,7 @@ class _InvoicePageState extends State<InvoicePage>{
  Future<List<Map<String,dynamic>>> load()async{final d=await Api(widget.token).get('/invoices');return (d['invoices'] as List? ??[]).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList();}
  Future<void> refresh()async{setState(()=>future=load());await future;}
  Future<void> create()async{
-  try{final customers=await Api(widget.token).get('/customers');final items=await Api(widget.token).get('/inventory');
+  try{final customers=await Api(widget.token).get('/customers');Map<String,dynamic> items={};try{items=await Api(widget.token).get('/inventory');}catch(_){}
    final result=await showDialog<Map<String,dynamic>>(context:context,builder:(_)=>InvoiceComposer(customers:(customers['customers'] as List? ??[]).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList(),items:(items['items'] as List? ??[]).whereType<Map>().map((x)=>Map<String,dynamic>.from(x)).toList()));
    if(result==null)return;await Api(widget.token).post('/invoices',result);await refresh();if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Invoice created.')));
   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}
