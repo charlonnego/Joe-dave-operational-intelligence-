@@ -1,18 +1,20 @@
-name: Joe&dave Android APK
-
+name: Joe&dave Android API 36 build
 on:
   workflow_dispatch:
   push:
+    branches: [main, release/pilot-readiness]
+    paths:
+      - 'products/joe-dave-operations-intelligence/**'
+      - '.github/workflows/joe-dave-android.yml'
+  pull_request:
     branches: [main]
     paths:
       - 'products/joe-dave-operations-intelligence/**'
       - '.github/workflows/joe-dave-android.yml'
-
 permissions:
   contents: read
-
 jobs:
-  build-debug-apk:
+  build-android:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -20,50 +22,53 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Set up Node
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
-
-      - name: Install Android build platform
+      - name: Install Android API 36
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
-
       - name: Install Capacitor dependencies
         run: npm install --no-audit --no-fund
-
       - name: Prepare Capacitor web directory
         run: |
           mkdir -p www
-          printf '%s\\n' '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>Opening Joe&dave…</body></html>' > www/index.html
-
+          printf '%s\n' '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>Joe&dave remote workspace</body></html>' > www/index.html
       - name: Generate Android project
         run: npx cap add android
-
-      - name: Sync Android project
+      - name: Set and verify target API 36
+        run: node scripts/prepare-android.mjs
+      - name: Sync Capacitor Android plugins
         run: npx cap sync android
-
-      - name: Build debug APK
+      - name: Configure upload-key signing when secrets exist
+        if: \${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: \${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: \${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: \${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: \${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: node scripts/configure-android-signing.mjs
+      - name: Build debug APK and release AAB
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug
-
-      - name: Upload APK
+          ./gradlew --no-daemon assembleDebug bundleRelease
+      - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: joedave-android-debug-apk
-          path: products/joe-dave-operations-intelligence/android/app/build/outputs/apk/debug/app-debug.apk
+          name: joe-dave-android-api36-\${{ github.run_number }}
+          path: |
+            products/joe-dave-operations-intelligence/android/app/build/outputs/apk/debug/*.apk
+            products/joe-dave-operations-intelligence/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 14
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f android/app/joe-dave-upload.jks
