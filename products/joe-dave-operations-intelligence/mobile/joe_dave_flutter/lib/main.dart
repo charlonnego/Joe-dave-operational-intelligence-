@@ -384,7 +384,7 @@ class InventoryImportPage extends StatefulWidget{
  @override State<InventoryImportPage> createState()=>_InventoryImportPageState();
 }
 class _InventoryImportPageState extends State<InventoryImportPage>{
- final csv=TextEditingController(text:'sku,name,quantity,unit,warehouse,reorder_level,cost_minor,sale_price_minor\\nSKU-001,Sample item,10,pcs,Main,2,50000,75000');
+ final csv=TextEditingController(text:'sku,name,quantity,unit,warehouse,reorder_level,cost_minor,sale_price_minor,' + String.fromCharCode(10) + 'SKU-001,Sample item,10,pcs,Main,2,50000,75000');
  bool busy=false;String? result;
  List<String> parseCsvLine(String line){final out=<String>[];final b=StringBuffer();bool quoted=false;for(var i=0;i<line.length;i++){final ch=line[i];if(ch=='"'){if(quoted&&i+1<line.length&&line[i+1]=='"'){b.write('"');i++;}else{quoted=!quoted;}}else if(ch==','&&!quoted){out.add(b.toString().trim());b.clear();}else{b.write(ch);}}out.add(b.toString().trim());return out;}
  Future<void> importRows()async{
