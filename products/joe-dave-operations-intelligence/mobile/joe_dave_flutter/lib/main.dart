@@ -86,7 +86,7 @@ class _SignInState extends State<SignIn> {
   bool register=false,busy=false,obscure=true;
   String? error;
   Future<void> submit() async {
-    setState(()=>{busy=true,error=null});
+    setState(() { busy=true; error=null; });
     try{
       final result=await Api().post(register?'/auth/register':'/auth/login',{
         'email':email.text.trim(),'password':password.text,
@@ -108,7 +108,7 @@ class _SignInState extends State<SignIn> {
     if(register)const Padding(padding:EdgeInsets.only(top:8),child:Text('Use at least 12 characters for your password.',style:TextStyle(color:Colors.blueGrey,fontSize:12))),
     if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:Colors.red))),
     const SizedBox(height:20),FilledButton(onPressed:busy?null:submit,style:FilledButton.styleFrom(minimumSize:const Size.fromHeight(52),backgroundColor:blue),child:busy?const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):Text(register?'Create workspace':'Sign in')),
-    TextButton(onPressed:busy?null:()=>setState(()=>{register=!register,error=null}),child:Text(register?'Already have an account? Sign in':'Create a new business workspace'))
+    TextButton(onPressed:busy?null:()=>setState(() { register=!register; error=null; }),child:Text(register?'Already have an account? Sign in':'Create a new business workspace'))
   ]))))));
 }
 
