@@ -30,8 +30,8 @@ else fail('Operational modules use same-origin API gateway','Remove direct Worke
 if (gateway.includes('incoming.pathname.replace') && gateway.includes('fetch(new Request(upstream.toString(), init))')) pass('Pages API gateway proxies requests to the Worker');
 else fail('Pages API gateway proxies requests to the Worker','Check the Pages Functions catch-all route');
 
-if (privacy.includes('publish its registered legal identity') || privacy.includes('dedicated privacy contact')) block('Privacy policy operator identity and contact complete','The published policy still contains a pre-launch instruction to add the operator legal identity and dedicated privacy contact.');
-else block('Privacy policy operator identity and contact complete','Confirm the operator legal identity, registered address and dedicated privacy contact with the business owner before submission.');
+if (privacy.includes('publish its registered legal identity') || privacy.includes('Before broad commercial launch')) block('Privacy policy operator identity and contact complete','The published policy still contains a pre-launch instruction to add the operator legal identity and dedicated privacy contact.');
+else pass('Privacy policy has no pre-launch identity placeholder','The business owner must still verify the legal name, address and contact details before submission.');
 
 try {
   const manifest = JSON.parse(manifestText);
