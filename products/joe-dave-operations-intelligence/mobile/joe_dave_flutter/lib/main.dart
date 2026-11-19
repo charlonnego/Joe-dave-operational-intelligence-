@@ -106,13 +106,13 @@ class _WorkspaceState extends State<Workspace>{
   final sp=special.where((m)=>m.$2==current).toList();
   Widget page=current=='home'?Dashboard(token:widget.token,onSelect:(v)=>setState(()=>current=v)):
    current=='settings'?Settings(profile:widget.profile):
-   spec.isNotEmpty?ModulePage(key:ValueKey(current),token:widget.token,spec:spec.first):
    current=='finance/invoices'?InvoicePage(token:widget.token):
    current=='finance/receipts'?ReceiptsPage(token:widget.token):
    current=='finance/purchase-orders'?PurchaseOrdersPage(token:widget.token):
    current=='team'?TeamMembersPage(token:widget.token):
    current=='business-settings'?BusinessSettingsPage(token:widget.token):
    current=='inventory-import'?InventoryImportPage(token:widget.token):
+   spec.isNotEmpty?ModulePage(key:ValueKey(current),token:widget.token,spec:spec.first):
    sp.isNotEmpty?SpecialPage(key:ValueKey(current),token:widget.token,title:sp.first.$1,path:sp.first.$2):Dashboard(token:widget.token,onSelect:(v)=>setState(()=>current=v));
   return Scaffold(appBar:AppBar(title:Row(children:[const Icon(Icons.insights_rounded,color:blue),const SizedBox(width:8),const Text('Joe&dave',style:TextStyle(fontWeight:FontWeight.w900)),if(wide)Flexible(child:Text('  ·  '+businessName,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12,color:Colors.blueGrey)))]),
    actions:[PopupMenuButton<String>(onSelected:(v){if(v=='settings')setState(()=>current='settings');if(v=='logout')widget.onLogout();},itemBuilder:(_)=>const [PopupMenuItem(value:'settings',child:Text('Workspace settings')),PopupMenuItem(value:'logout',child:Text('Sign out'))])]),
