@@ -75,8 +75,17 @@ class _LoginScreenState extends State<LoginScreen>{
   }catch(e){if(mounted)setState(()=>error=e.toString());}finally{if(mounted)setState(()=>busy=false);}
  }
  Future<Map<String,dynamic>> httpPost(String p,Map<String,dynamic> b)async{
-  final r=await http.post(Uri.parse(apiRoot+p),headers:{'Content-Type':'application/json'},body:jsonEncode(b)).timeout(const Duration(seconds:30));
-  final d=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300)throw Exception(d['error']??'Sign in failed');return Map<String,dynamic>.from(d);
+  final r=await http.post(Uri.parse(apiRoot+p),headers:{'Accept':'application/json','Content-Type':'application/json'},body:jsonEncode(b)).timeout(const Duration(seconds:45));
+  dynamic decoded;
+  try{decoded=jsonDecode(r.body);}catch(_){
+   final body=r.body.trim();
+   if(body.contains('1102'))throw Exception('The Joe&dave API worker exceeded its Cloudflare CPU limit (1102). The server fix is being deployed; please try again shortly.');
+   if(body.isEmpty)throw Exception('The API returned an empty response (HTTP ${r.statusCode}). Please try again.');
+   throw Exception('The API returned a non-JSON response (HTTP ${r.statusCode}). Please try again or contact support.');
+  }
+  if(decoded is! Map)throw Exception('The API returned an unexpected response format.');
+  final d=Map<String,dynamic>.from(decoded);
+  if(r.statusCode<200||r.statusCode>=300)throw Exception(d['error']?.toString()??'Sign in failed (HTTP ${r.statusCode}).');return d;
  }
  @override Widget build(BuildContext context)=>Scaffold(body:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:440),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
   Container(height:60,width:60,alignment:Alignment.center,decoration:BoxDecoration(color:blue,borderRadius:BorderRadius.circular(18)),child:const Icon(Icons.insights_rounded,color:Colors.white,size:32)),
