@@ -1,5 +1,5 @@
 (()=> {
-const API='https://joe-dave-operations-api.uchechukwuanuforo.workers.dev';
+const API=window.Capacitor?.isNativePlatform?.()?'https://joe-dave-operations-intelligence.pages.dev/api':'/api';
 const defs={
 'inventory/items':{title:'Items',fields:[['item_code','Item code','text',1],['name','Item name','text',1],['description','Description','text'],['item_type','Type','select:stock|service|manufactured|raw_material|finished_good'],['unit_of_measure','Unit','text'],['tracking_mode','Tracking','select:none|batch|serial'],['valuation_method','Valuation','select:fifo|moving_average'],['reorder_level','Reorder level','number'],['reorder_quantity','Reorder quantity','number']]},
 'inventory/warehouses':{title:'Warehouses',fields:[['code','Warehouse code','text',1],['name','Warehouse name','text',1],['address','Address','text']]},

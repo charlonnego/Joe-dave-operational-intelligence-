@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#2563eb">
+<title>Delete your Joe&dave account</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f5f8fc}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:28px 16px;display:grid;place-items:center}
+main{width:min(100%,620px);background:#fff;border:1px solid #dbe5f1;border-radius:20px;padding:clamp(22px,5vw,42px);box-shadow:0 18px 60px #1e3a8a12}
+.brand{font-weight:800;color:#1d4ed8;text-decoration:none}h1{font-size:clamp(28px,5vw,40px);line-height:1.12;letter-spacing:-1px;margin:28px 0 12px}
+p{color:#526078;line-height:1.65}.notice{padding:14px 16px;border-radius:12px;background:#eff6ff;color:#1e3a8a;font-size:14px}
+label{display:block;font-size:14px;font-weight:650;margin:15px 0 6px}
+input{width:100%;padding:12px 13px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;margin-top:7px}
+button{border:0;border-radius:10px;padding:12px 16px;background:#2563eb;color:#fff;font:inherit;font-weight:700;cursor:pointer;margin-top:18px}
+button.secondary{background:#eef2ff;color:#1e40af}button.danger{background:#b91c1c}button:disabled{opacity:.55;cursor:not-allowed}
+.status{margin-top:18px;padding:13px 15px;border-radius:10px;background:#f1f5f9;color:#334155;white-space:pre-wrap}
+a{color:#1d4ed8}.small{font-size:13px}.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+<a class="brand" href="/">Joe&dave Operations Intelligence</a>
+<h1>Request account deletion</h1>
+<p>Use this page if you no longer want a Joe&dave login. We verify that you control the account before accepting the request.</p>
+<div class="notice"><strong>Before you continue:</strong> deleting your login does not automatically erase business invoices, receipts, accounting evidence or records belonging to other workspace members. Records required for legitimate business, security or legal reasons may be retained or anonymised as explained in the <a href="/privacy.html">Privacy Policy</a>.</div>
+<form id="form">
+<label>Email address<input name="email" type="email" autocomplete="username" required maxlength="254"></label>
+<label>Current password<input name="password" type="password" autocomplete="current-password" required maxlength="200"></label>
+<label>Type DELETE MY ACCOUNT to confirm<input name="confirmation" required autocomplete="off" maxlength="32"></label>
+<label>Reason (optional)<input name="reason" maxlength="500"></label>
+<button id="submit" type="submit">Verify and request deletion</button>
+</form>
+<div id="status" class="status hidden" role="status" aria-live="polite"></div>
+<button id="cancel" class="secondary hidden" type="button">Cancel pending request</button>
+<p class="small">Your password is sent only to the Joe&dave sign-in API over HTTPS to verify account ownership. This page does not save it in browser storage. <a href="/privacy.html">Privacy policy</a>.</p>
+</main>
+<script>
+(()=>{
+ const form=document.getElementById('form'),status=document.getElementById('status'),submit=document.getElementById('submit'),cancel=document.getElementById('cancel');
+ let token='';
+ const show=(message,ok=true)=>{status.textContent=message;status.classList.remove('hidden');status.style.background=ok?'#eff6ff':'#fef2f2';status.style.color=ok?'#1e3a8a':'#991b1b';};
+ const api=async(path,options={})=>{const response=await fetch('/api'+path,{...options,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(options.headers||{})},cache:'no-store'});const data=await response.json().catch(()=>({error:'Unexpected server response.'}));if(!response.ok)throw new Error(data.error||'Request failed ('+response.status+').');return data;};
+ const loadStatus=async()=>{const d=await api('/account/deletion-request');const r=d.request;if(r&&r.status==='pending'){show('A deletion request is pending. Requested: '+new Date(r.requested_at).toLocaleString()+'. Scheduled for processing review: '+new Date(r.scheduled_for).toLocaleString()+'. You can cancel it below.');cancel.classList.remove('hidden');}else{show(r&&r.status==='cancelled'?'Your previous deletion request was cancelled.':'No pending deletion request was found.');cancel.classList.add('hidden');}};
+ form.addEventListener('submit',async event=>{event.preventDefault();submit.disabled=true;const data=new FormData(form);const email=String(data.get('email')||'').trim(),password=String(data.get('password')||''),confirmation=String(data.get('confirmation')||''),reason=String(data.get('reason')||'').trim();if(confirmation!=='DELETE MY ACCOUNT'){show('Type DELETE MY ACCOUNT exactly to continue.',false);submit.disabled=false;return;}try{const login=await api('/auth/login',{method:'POST',body:JSON.stringify({email,password})});token=login.token;const result=await api('/account/deletion-request',{method:'POST',body:JSON.stringify({password,confirmation,reason})});show(result.message||'Your deletion request was submitted.');form.reset();await loadStatus();}catch(error){show(error.message,false);}finally{submit.disabled=false;}});
+ cancel.addEventListener('click',async()=>{if(!token){show('Sign in again to verify account ownership before cancelling.',false);return;}if(!confirm('Cancel your pending account-deletion request?'))return;cancel.disabled=true;try{const result=await api('/account/deletion-request',{method:'DELETE'});show(result.message||'Request cancelled.');await loadStatus();}catch(error){show(error.message,false);}finally{cancel.disabled=false;}});
+})();
+</script>
+</body>
+</html>

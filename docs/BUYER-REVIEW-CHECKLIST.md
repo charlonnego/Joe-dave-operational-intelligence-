@@ -39,3 +39,19 @@ The sale agreement should distinguish:
 ## Deployment caution
 
 The source files have been copied, but a Git commit is not proof of a successful clean build, production deployment, or full browser-based acceptance test. Verify the account and database IDs in `cloudflare/wrangler.toml` before deploying, keep secrets out of Git, and apply only the migration set for the chosen database backend.
+
+## Commercial pilot and Play release gates
+
+- [ ] Agree a narrow pilot scope: sales/invoicing/receipts, inventory, purchasing and live operational visibility.
+- [ ] Recruit 5–10 pilot businesses and obtain written permission to use anonymised feedback; do not copy customer data into demos.
+- [ ] Complete a real invoice-to-receipt workflow and a purchase-order-to-stock-receipt workflow in separate test workspaces.
+- [ ] Verify two-tenant isolation with two independent accounts, including direct API requests and attempts to access another tenant's IDs.
+- [ ] Confirm the same-origin `/api` gateway works in desktop browsers and the Capacitor Android shell.
+- [ ] Verify data export, backup and restore using a documented recovery test.
+- [ ] Verify account deletion requests through completion, including what data is retained and why.
+- [ ] Publish a privacy policy that accurately names the operator, data categories, purposes, processors, retention and contact channel.
+- [ ] Generate a signed Android App Bundle targeting API 36 or higher; verify package ID, version code, signing certificate and release build.
+- [ ] Complete Play Console Data safety, app access, content rating, target audience, ads declaration (if applicable), account deletion URL and store listing.
+- [ ] Run closed testing on real Android devices before production rollout.
+
+**Do not submit to Google Play while any security, account-deletion, privacy-policy, target-API, signing or critical end-to-end gate remains unchecked.**

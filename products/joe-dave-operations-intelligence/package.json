@@ -10,7 +10,9 @@
     "ios:add": "cap add ios",
     "ios:sync": "cap sync ios",
     "ios:open": "cap open ios",
-    "ios:build:simulator": "cd ios/App && xcodebuild -workspace App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO"
+    "ios:build:simulator": "cd ios/App && xcodebuild -workspace App.xcworkspace -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO",
+    "release:preflight": "node scripts/release-preflight.mjs",
+    "android:prepare": "node scripts/prepare-android-web.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

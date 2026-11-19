@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b1110">
+<meta name="theme-color" content="#2563eb">
 <title>Joe&dave | Operations Intelligence</title>
 <style>
 :root{color-scheme:dark;--bg:#080e0b;--panel:#101a14;--panel2:#15221a;--line:#293a2f;--muted:#9db0a3;--text:#f0f7f1;--green:#b4f28d;--green2:#4d9665;--amber:#f4c97c;--red:#ff9b91}
@@ -245,8 +245,16 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
  .hero-actions .button,.invoice-submit{transition:transform .16s ease,box-shadow .16s ease}
  .hero-actions .button:active,.invoice-submit:active{transform:translateY(1px)}
 }
+
+/* Final brand pass: bright blue hero, not the legacy dark-green banner. */
+.hero{background:linear-gradient(125deg,#eff6ff 0%,#dbeafe 62%,#bfdbfe 100%);border:1px solid #bfdbfe;box-shadow:0 12px 30px rgba(37,99,235,.10)}
+.hero h1{color:#172554}
+.hero h1 span{color:#1d4ed8!important}
+.hero .eyebrow{color:#1d4ed8}
+.hero p{color:#475569}
+.hero .button{box-shadow:0 6px 16px rgba(37,99,235,.14)}
 </style>
-<meta name="description" content="Joe&dave brings finance, invoicing, inventory, purchasing, HR and business operations into one workspace.">
+<meta name="description" content="Joe&dave connects sales, cash collection, inventory and purchasing for growing businesses in one clear operations workspace.">
 <meta name="application-name" content="Joe&dave">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
@@ -270,7 +278,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
   <div class="topbar"><div class="crumb">Joe&amp;dave <span style="color:#5b6c60">/</span> <span id="crumb">Overview</span></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="pill" id="api-status"><i class="dot"></i> API STATUS · CHECKING</span><button class="button secondary" id="auth-open">Sign in / Create account</button><button class="button" id="jd-install-app" type="button" aria-describedby="jd-install-help">↓ Install app</button><button class="button secondary" id="auth-out" hidden>Sign out</button><a class="button secondary" id="platform-owner-link" href="/platform.html" hidden style="text-decoration:none">Platform owner console</a></div></div><p id="jd-install-help" hidden style="margin:-20px 0 22px auto;max-width:440px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);font-size:13px">To install Joe&amp;dave, open your browser menu and choose <b>Install app</b> or <b>Add to Home screen</b>. Installation availability depends on your browser.</p>
 
   <section class="section active" id="page-overview">
-    <div class="hero"><div><div class="eyebrow">Business command centre</div><h1>Run the business.<br><span style="color:var(--green)">See what needs action.</span></h1><p>A standalone business operations engine. Manage customers, issue invoices, record receipts and import inventory using your own records—not invented figures.</p><div class="hero-actions" aria-label="Quick business actions"><button class="button" data-go="invoices">＋ Create invoice</button><button class="button secondary" data-go="customers">＋ Add customer</button><button class="button secondary" data-go="inventory">Import inventory ↗</button></div></div></div>
+    <div class="hero"><div><div class="eyebrow">Business command centre</div><h1>Run the business.<br><span style="color:var(--green)">See what needs action.</span></h1><p>Keep sales, cash collection, stock and purchasing connected. Manage customers, issue invoices, record receipts and import inventory using your own business records—not invented figures.</p><div class="hero-actions" aria-label="Quick business actions"><button class="button" data-go="invoices">＋ Create invoice</button><button class="button secondary" data-go="customers">＋ Add customer</button><button class="button secondary" data-go="inventory">Import inventory ↗</button></div></div></div>
     <div class="grid">
       <article class="card span-12"><div class="card-head"><h2>Quick access</h2><span class="tag">Workspace tools</span></div><div class="grid"><div class="span-4"><button class="button secondary" data-go="branding" style="width:100%;white-space:normal">✦ Brand, logo & templates</button><p class="subtle" style="margin-top:8px">Upload your logo, set business details and choose invoice/receipt designs.</p></div><div class="span-4"><button class="button secondary" data-go="invoices" style="width:100%;white-space:normal">▤ Create & export invoices</button><p class="subtle" style="margin-top:8px">Create invoices, then export a selected invoice or receipt to PDF or JPG.</p></div><div class="span-4"><button class="button secondary" data-go="analytics" style="width:100%;white-space:normal">▥ Open data analysis</button><p class="subtle" style="margin-top:8px">Review 12-month invoicing, collections, expenses, margins and customer trends.</p></div></div></article>
       <article class="card span-12" id="jd-onboarding" hidden>
@@ -497,7 +505,7 @@ document.getElementById('csvfile').addEventListener('change',async e=>{const fil
 
 <script>
 (() => {
- const API='/api';
+ const API=window.Capacitor?.isNativePlatform?.()?'https://joe-dave-operations-intelligence.pages.dev/api':'/api';
  const $=id=>document.getElementById(id);
  let token=localStorage.getItem('jd_session')||'', business=null, authMode='login', customers=[], invoices=[], receipts=[], draftRestoredFor='';
  const money=(minor,cur)=>new Intl.NumberFormat(undefined,{style:'currency',currency:cur||'NGN'}).format((Number(minor)||0)/100);
@@ -800,7 +808,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
  let finished=false;
  const finish=(ok,message,db)=>{if(finished)return;finished=true;badge.innerHTML='<i class="dot" style="background:'+(ok?'var(--green)':'var(--red)')+'"></i> API STATUS · '+message;if(apiLine)apiLine.textContent=ok?'Online':message;if(dbLine)dbLine.textContent=db||'Not verified';};
  const timer=setTimeout(()=>finish(false,'TIMEOUT · CHECK NETWORK / API','Not verified'),7000);
- fetch('https://joe-dave-operations-api.uchechukwuanuforo.workers.dev/health',{method:'GET',mode:'cors',cache:'no-store',signal:AbortSignal.timeout(6500)})
+ fetch('/api/health',{method:'GET',cache:'no-store',signal:AbortSignal.timeout(6500)})
   .then(async r=>{if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();if(!d||d.ok!==true)throw new Error('Health check failed');clearTimeout(timer);finish(true,'CONNECTED',d.database==='connected'?'Connected':'Unavailable');})
   .catch(e=>{clearTimeout(timer);finish(false,e.name==='TimeoutError'?'TIMEOUT · API DID NOT RESPOND':'UNAVAILABLE · '+(e.message||'connection failed').slice(0,48),'Not verified');});
 })();

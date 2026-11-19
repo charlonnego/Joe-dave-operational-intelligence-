@@ -41,3 +41,19 @@ Never represent these limitations as completed capabilities. Keep all customer-f
 ## Growth & Sales Intelligence (Sellbird-inspired, independently implemented)
 
 A separate first-party module adds prospect management connected to the CRM, evidence-backed buying signals, campaign planning, an approval-first personalised email draft outbox, manually recorded replies, CSV export of approved drafts, and workspace-level do-not-contact suppressions. It does not copy Sellbird source or branding and does not require a Sellbird account. No email sending, mailbox access, automatic prospect scraping, email verification or AI generation is enabled; those require separate integrations and explicit configuration. Draft approval only authorises manual export, never sending. All sales intelligence records are tenant-scoped and protected by the sales role.
+
+## Commercial focus and claims
+
+The initial commercial proposition is **one workspace to control sales, cash collection, stock and purchasing**. Lead with these three end-to-end workflows rather than presenting every module as equally mature.
+
+- Sales: customer → quotation → accepted quotation → sales order; invoice → receipt → outstanding balance.
+- Stock and buying: item/warehouse → purchase order → posted receipt → stock visibility; supplier invoice matching where the required source records exist.
+- Visibility: dashboards and exception prompts must disclose missing or unavailable data and must never turn missing data into zero.
+
+The following remain restricted or explicitly incomplete until separately validated: statutory payroll calculations; labour and overhead manufacturing costing; bank statement reconciliation and payment execution; automatic email sending; and full offline transactional operation. The offline area stores local notes only. Do not imply that invoices, payments, stock changes or other business transactions sync offline.
+
+## API routing rule
+
+The core application and operational modules must call the same-origin `/api` gateway. Do not hardcode a `workers.dev` origin in product browser scripts. The gateway remains responsible for routing to the Worker. This keeps web and Capacitor requests on the same origin and avoids duplicated CORS configuration.
+
+Run `npm run release:preflight` from this directory before release work. The check is intentionally conservative: it verifies source-level release prerequisites and reports missing Android native project/target API configuration as blockers. It does not replace device testing, security review, Play Console declarations or a production backup/restore exercise.

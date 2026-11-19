@@ -1,69 +1,63 @@
-name: Joe&dave Android APK
-
+name: Joe&dave Native Flutter Android build
 on:
   workflow_dispatch:
   push:
+    branches: [main, release/pilot-readiness]
+    paths:
+      - 'products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/**'
+      - '.github/workflows/joe-dave-android.yml'
+  pull_request:
     branches: [main]
     paths:
-      - 'products/joe-dave-operations-intelligence/**'
+      - 'products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/**'
       - '.github/workflows/joe-dave-android.yml'
-
 permissions:
   contents: read
-
 jobs:
-  build-debug-apk:
+  build-native-android:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: products/joe-dave-operations-intelligence
+        working-directory: products/joe-dave-operations-intelligence/mobile/joe_dave_flutter
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
-          node-version: 22
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
-
-      - name: Install Android build platform
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Install Capacitor dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Prepare Capacitor web directory
+          channel: stable
+          cache: true
+      - name: Generate Android platform project
+        run: flutter create --platforms=android --org com.joedave --project-name operations .
+      - name: Set Joe&dave Android identity and network permission
         run: |
-          mkdir -p www
-          printf '%s\\n' '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>Opening Joe&dave…</body></html>' > www/index.html
-
-      - name: Generate Android project
-        run: npx cap add android
-
-      - name: Sync Android project
-        run: npx cap sync android
-
-      - name: Build debug APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug
-
-      - name: Upload APK
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          s = s.replace('android:label="operations"', 'android:label="Joe&amp;dave"')
+          if 'android.permission.INTERNET' not in s:
+              s = s.replace('<manifest ', '<manifest ', 1)
+              marker = s.find('>')
+              s = s[:marker+1] + chr(10) + '    <uses-permission android:name="android.permission.INTERNET" />' + s[marker+1:]
+          p.write_text(s)
+          PY
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Analyze Flutter source
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Run Flutter tests
+        run: flutter test
+      - name: Build native release APK
+        run: flutter build apk --release
+      - name: Build Play Store App Bundle
+        run: flutter build appbundle --release
+      - name: Upload native Android outputs
         uses: actions/upload-artifact@v4
         with:
-          name: joedave-android-debug-apk
-          path: products/joe-dave-operations-intelligence/android/app/build/outputs/apk/debug/app-debug.apk
+          name: joe-dave-flutter-native-${{ github.run_number }}
+          path: |
+            products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/build/app/outputs/flutter-apk/app-release.apk
+            products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
