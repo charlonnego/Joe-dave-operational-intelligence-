@@ -24,14 +24,27 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Generate missing native platform scaffolding
+        if: ${{ !hashFiles('products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/android/app/build.gradle', 'products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/android/app/build.gradle.kts') }}
+        run: flutter create --platforms=android,ios --org com.joedave --project-name joe_dave_operations .
       - name: Install dependencies
         run: flutter pub get
       - name: Analyze Dart source
         run: flutter analyze --no-fatal-infos
       - name: Run widget tests
         run: flutter test
+      - name: Verify Android target SDK
+        run: |
+          grep -R -E 'compileSdk(Version)?[ =]+36|compileSdk[[:space:]]*=+[[:space:]]*36' android/app
       - name: Build Android debug APK
         run: flutter build apk --debug
+      - name: Upload debug APK for internal QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: joe-dave-android-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
   ios-simulator:
     runs-on: macos-15
     defaults:
@@ -43,7 +56,14 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Generate missing native platform scaffolding
+        if: ${{ !hashFiles('products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/ios/Runner.xcodeproj/project.pbxproj') }}
+        run: flutter create --platforms=android,ios --org com.joedave --project-name joe_dave_operations .
       - name: Install dependencies
         run: flutter pub get
+      - name: Analyze Dart source
+        run: flutter analyze --no-fatal-infos
+      - name: Run widget tests
+        run: flutter test
       - name: Build unsigned iOS simulator app
         run: flutter build ios --simulator --no-codesign
