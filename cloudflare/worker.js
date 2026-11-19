@@ -1,3 +1,4 @@
+import { pbkdf2Sync } from "node:crypto";
 const corsHeaders = origin => ({
  "Access-Control-Allow-Origin": origin || "https://joe-dave-operations-intelligence.pages.dev",
  "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
@@ -9,12 +10,11 @@ const uid=()=>crypto.randomUUID();
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 const digest=async s=>hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)));
 const PASSWORD_ITERATIONS=210000;
-// Use the Workers Web Crypto implementation rather than a synchronous JavaScript
-// HMAC loop. The old loop consumed the Worker CPU budget and caused Cloudflare 1102
-// responses during sign-in even when the credentials were correct.
-async function pbkdf2Sha256(password,salt,iterations){
- const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),{name:"PBKDF2"},false,["deriveBits"]);
- return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations,hash:"SHA-256"},key,256));
+// Use Cloudflare's native Node.js crypto implementation for PBKDF2.
+// This avoids the Worker WebCrypto NotSupportedError observed in production,
+// while retaining the existing PBKDF2-SHA256 storage format and iteration count.
+function pbkdf2Sha256(password,salt,iterations){
+ return new Uint8Array(pbkdf2Sync(password,salt,iterations,32,"sha256"));
 }
 async function hashPassword(password,saltHex,iterations=PASSWORD_ITERATIONS){
  const salt=saltHex?Uint8Array.from(saltHex.match(/../g).map(x=>parseInt(x,16))):crypto.getRandomValues(new Uint8Array(16));
