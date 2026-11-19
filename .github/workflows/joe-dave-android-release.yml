@@ -38,8 +38,7 @@ jobs:
       - name: Install Capacitor dependencies
         run: |
           npm install --no-audit --no-fund
-          mkdir -p www
-          printf '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>Opening Joe&dave…</body></html>' > www/index.html
+          npm run android:prepare
           npx cap add android
           npx cap sync android
       - name: Configure private release signing
