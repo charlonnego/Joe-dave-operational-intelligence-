@@ -93,7 +93,7 @@ class _SignInState extends State<SignIn> {
         'email':email.text.trim(),'password':password.text,
         if(register)'business_name':business.text.trim(),
         if(register)'display_name':business.text.trim(),'currency_code':'NGN'});
-      await widget.onSignedIn(result['token'] as String,result);
+      final sessionToken=result['token'] as String; final me=await Api(sessionToken).get('/auth/me'); await widget.onSignedIn(sessionToken,me);
     }catch(e){if(mounted)setState(()=>error=e.toString().replaceFirst('Exception: ',''));}
     finally{if(mounted)setState(()=>busy=false);}
   }
