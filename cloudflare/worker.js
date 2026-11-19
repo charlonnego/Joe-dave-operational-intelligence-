@@ -7,17 +7,27 @@ const corsHeaders = origin => ({
 const json=(data,status=200,origin)=>new Response(JSON.stringify(data),{status,headers:{...corsHeaders(origin),"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 const uid=()=>crypto.randomUUID();
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+import { createHmac } from "node:crypto";
 const digest=async s=>hex(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)));
 const PASSWORD_ITERATIONS=210000;
-// Derive PBKDF2-SHA256 using Workers WebCrypto; preserve existing stored hashes.
-async function pbkdf2Sha256(password,salt,iterations){
- const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
- const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations,hash:"SHA-256"},key,256);
- return new Uint8Array(bits);
+// Workers WebCrypto rejects PBKDF2 counts above 100,000. Use HMAC-SHA256
+// iterations directly so existing 210,000-iteration hashes remain verifiable.
+function pbkdf2Sha256(password,salt,iterations){
+ const key=new TextEncoder().encode(password);
+ const block=new Uint8Array(salt.length+4);
+ block.set(salt);
+ block.set([0,0,0,1],salt.length);
+ const hmac=data=>new Uint8Array(createHmac("sha256",key).update(data).digest());
+ let u=hmac(block),out=u.slice();
+ for(let i=1;i<iterations;i++){
+  u=hmac(u);
+  for(let j=0;j<out.length;j++)out[j]^=u[j];
+ }
+ return out;
 }
 async function hashPassword(password,saltHex,iterations=PASSWORD_ITERATIONS){
  const salt=saltHex?Uint8Array.from(saltHex.match(/../g).map(x=>parseInt(x,16))):crypto.getRandomValues(new Uint8Array(16));
- const hash=hex(await pbkdf2Sha256(password,salt,iterations));
+ const hash=hex(pbkdf2Sha256(password,salt,iterations));
  return {stored:"pbkdf2$"+iterations+"$"+hex(salt)+"$"+hash,hash};
 }
 async function verifyPassword(password,stored){const p=String(stored||"").split("$"),iterations=Number(p[1]);if(p.length!==4||p[0]!=="pbkdf2"||!Number.isInteger(iterations)||iterations<10000||iterations>PASSWORD_ITERATIONS||!/^[a-f0-9]{32}$/i.test(p[2])||!/^[a-f0-9]{64}$/i.test(p[3]))return false;const actual=(await hashPassword(password,p[2],iterations)).hash,expected=p[3].toLowerCase();let diff=0;for(let i=0;i<expected.length;i++)diff|=actual.charCodeAt(i)^expected.charCodeAt(i);return diff===0;}
