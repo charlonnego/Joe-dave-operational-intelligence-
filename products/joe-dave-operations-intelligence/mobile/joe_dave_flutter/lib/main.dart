@@ -247,17 +247,54 @@ class SpecialPage extends StatefulWidget{
  @override State<SpecialPage> createState()=>_SpecialPageState();
 }
 class _SpecialPageState extends State<SpecialPage>{
- late Future<Map<String,dynamic>> future;
+ late Future<Map<String,dynamic>> future;bool busy=false;
  @override void initState(){super.initState();future=Api(widget.token).get(widget.path);}
  Future<void> refresh()async{setState(()=>future=Api(widget.token).get(widget.path));await future;}
- @override Widget build(BuildContext context)=>Column(children:[Padding(padding:const EdgeInsets.all(20),child:Align(alignment:Alignment.centerLeft,child:Text(widget.title,style:const TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:navy)))),Expanded(child:FutureBuilder<Map<String,dynamic>>(future:future,builder:(c,s){
-  if(s.connectionState==ConnectionState.waiting)return const Center(child:CircularProgressIndicator());if(s.hasError)return ErrorView(message:s.error.toString(),retry:refresh);
-  final d=s.data??{};return RefreshIndicator(onRefresh:refresh,child:ListView(padding:const EdgeInsets.all(16),children:[
-   for(final e in d.entries)if(e.value is num)Card(child:ListTile(title:Text(human(e.key)),trailing:Text(e.value.toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800,color:navy)))),
-   for(final e in d.entries)if(e.value is List)...[Padding(padding:const EdgeInsets.fromLTRB(4,16,4,8),child:Text(human(e.key),style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:navy))),for(final row in (e.value as List).take(150))if(row is Map)Card(child:ListTile(title:Text((row['name']??row['company_name']??row['lead_name']??row['subject']??row['summary']??row['id']??'Record').toString()),subtitle:Text(row.entries.where((x)=>x.key!='id'&&x.value!=null).take(3).map((x)=>human(x.key)+': '+x.value.toString()).join(' • '),maxLines:2,overflow:TextOverflow.ellipsis)))],
-   if(d.isEmpty)const Card(child:Padding(padding:EdgeInsets.all(18),child:Text('No sales intelligence data is available yet.')))
-  ]));
- }))]);
+ List<FieldSpec> fields(){
+  if(widget.path.endsWith('/prospects'))return const [FieldSpec('lead_name','Prospect name','text',true),FieldSpec('company_name','Company','text'),FieldSpec('email','Email','email'),FieldSpec('phone','Phone','text'),FieldSpec('source','Source','text'),FieldSpec('stage','Stage','select:new|qualified|proposal|negotiation|won|lost'),FieldSpec('estimated_value_minor','Estimated value (minor units)','number'),FieldSpec('next_follow_up','Next follow-up','date'),FieldSpec('notes','Notes','text')];
+  if(widget.path.endsWith('/signals'))return const [FieldSpec('company_name','Company','text',true),FieldSpec('signal_type','Signal type','select:hiring|expansion|new_location|technology_gap|service_problem|funding|contract_award|other',true),FieldSpec('summary','Evidence summary','text',true),FieldSpec('source_url','Evidence URL (HTTPS)','text'),FieldSpec('observed_at','Observed date','date')];
+  if(widget.path.endsWith('/campaigns'))return const [FieldSpec('name','Campaign name','text',true),FieldSpec('audience_description','Target audience','text',true),FieldSpec('offer_summary','Offer summary','text',true)];
+  if(widget.path.endsWith('/outbox'))return const [FieldSpec('lead_id','Prospect ID','text',true),FieldSpec('campaign_id','Campaign ID','text'),FieldSpec('evidence_signal_id','Evidence signal ID','text'),FieldSpec('to_email','Recipient email','email',true),FieldSpec('subject','Email subject','text',true),FieldSpec('body','Email draft body','text',true)];
+  if(widget.path.endsWith('/replies'))return const [FieldSpec('from_email','Sender email','email',true),FieldSpec('lead_id','Prospect ID','text'),FieldSpec('body','Reply content','text',true)];
+  if(widget.path.endsWith('/suppressions'))return const [FieldSpec('email','Email address','email',true),FieldSpec('reason','Reason','text')];
+  return const [];
+ }
+ Future<void> create()async{
+  final fs=fields();if(fs.isEmpty)return;
+  final spec=ModuleSpec(widget.path,widget.title,'Sales Intelligence',fs);
+  final body=await showDialog<Map<String,dynamic>>(context:context,builder:(_)=>RecordDialog(spec:spec));
+  if(body==null)return;
+  final endpoint=widget.path.endsWith('/outbox')?'/sales-intelligence/drafts':widget.path;
+  setState(()=>busy=true);
+  try{await Api(widget.token).post(endpoint,body);await refresh();if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Saved successfully.')));}
+  catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}
+  finally{if(mounted)setState(()=>busy=false);}
+ }
+ Future<void> review(String id,String action)async{
+  try{await Api(widget.token).post('/sales-intelligence/outbox/'+id+'/'+action,{});await refresh();if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(action=='approve'?'Draft approved for manual export.':'Draft rejected.')));}
+  catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}
+ }
+ @override Widget build(BuildContext context)=>Column(children:[
+  Padding(padding:const EdgeInsets.all(20),child:Row(children:[Expanded(child:Text(widget.title,style:const TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:navy))),if(fields().isNotEmpty)FilledButton.icon(onPressed:busy?null:create,icon:const Icon(Icons.add),label:const Text('Add'))])),
+  Expanded(child:FutureBuilder<Map<String,dynamic>>(future:future,builder:(c,s){
+   if(s.connectionState==ConnectionState.waiting)return const Center(child:CircularProgressIndicator());
+   if(s.hasError)return ErrorView(message:s.error.toString(),retry:refresh);
+   final d=s.data??{};
+   return RefreshIndicator(onRefresh:refresh,child:ListView(padding:const EdgeInsets.all(16),children:[
+    for(final e in d.entries)if(e.value is num)Card(child:ListTile(title:Text(human(e.key)),trailing:Text(e.value.toString(),style:const TextStyle(fontSize:20,fontWeight:FontWeight.w800,color:navy)))),
+    for(final e in d.entries)if(e.value is List)...[
+     Padding(padding:const EdgeInsets.fromLTRB(4,16,4,8),child:Text(human(e.key),style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:navy))),
+     for(final row in (e.value as List).take(150))if(row is Map)Card(child:ListTile(
+      title:Text((row['name']??row['company_name']??row['lead_name']??row['subject']??row['summary']??row['id']??'Record').toString()),
+      subtitle:Text(row.entries.where((x)=>x.key!='id'&&x.value!=null).take(3).map((x)=>human(x.key)+': '+x.value.toString()).join(' • '),maxLines:2,overflow:TextOverflow.ellipsis),
+      trailing:widget.path.endsWith('/outbox')&&row['status']=='draft'?PopupMenuButton<String>(onSelected:(v)=>review(row['id'].toString(),v),itemBuilder:(_)=>const [PopupMenuItem(value:'approve',child:Text('Approve for manual export')),PopupMenuItem(value:'reject',child:Text('Reject draft'))]):null,
+     ))
+    ],
+    if(d.isEmpty)const Card(child:Padding(padding:EdgeInsets.all(18),child:Text('No sales intelligence data is available yet.'))),
+    if(widget.path.endsWith('/outbox'))const Padding(padding:EdgeInsets.all(12),child:Text('Joe&dave does not send emails. Approved drafts are for manual export only.',style:TextStyle(color:Colors.blueGrey,fontSize:12)))
+   ]));
+  })),
+ ]);
 }
 
 class Settings extends StatelessWidget{
