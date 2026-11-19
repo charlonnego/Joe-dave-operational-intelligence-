@@ -13,7 +13,7 @@ const PASSWORD_ITERATIONS=210000;
 // HMAC loop. The old loop consumed the Worker CPU budget and caused Cloudflare 1102
 // responses during sign-in even when the credentials were correct.
 async function pbkdf2Sha256(password,salt,iterations){
- const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
+ const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),{name:"PBKDF2"},false,["deriveBits"]);
  return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations,hash:"SHA-256"},key,256));
 }
 async function hashPassword(password,saltHex,iterations=PASSWORD_ITERATIONS){
