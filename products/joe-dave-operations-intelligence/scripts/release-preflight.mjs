@@ -8,7 +8,7 @@ const pass = (name, detail='') => checks.push({status:'PASS',name,detail});
 const block = (name, detail) => checks.push({status:'BLOCK',name,detail});
 const fail = (name, detail) => checks.push({status:'FAIL',name,detail});
 
-for (const p of ['index.html','operations-modules.js','manifest.webmanifest','service-worker.js','capacitor.config.ts']) {
+for (const p of ['index.html','operations-modules.js','manifest.webmanifest','service-worker.js','capacitor.config.ts','functions/api/[[path]].js']) {
   if (existsSync(resolve(root,p))) pass('Required PWA source exists',p);
   else fail('Required PWA source exists',p+' is missing');
 }
@@ -18,12 +18,16 @@ const ops = read('operations-modules.js');
 const manifestText = read('manifest.webmanifest');
 const sw = read('service-worker.js');
 const cap = read('capacitor.config.ts');
+const gateway = read('functions/api/[[path]].js');
 
 if (index.includes("const API='/api'") && index.includes("fetch('/api/health'")) pass('Core app uses same-origin API gateway');
 else fail('Core app uses same-origin API gateway','Expected /api and /api/health');
 
 if (ops.includes("const API='/api'") && !ops.includes('workers.dev')) pass('Operational modules use same-origin API gateway');
 else fail('Operational modules use same-origin API gateway','Remove direct Worker origins; use /api');
+
+if (gateway.includes('incoming.pathname.replace') && gateway.includes('fetch(new Request(upstream.toString(), init))')) pass('Pages API gateway proxies requests to the Worker');
+else fail('Pages API gateway proxies requests to the Worker','Check the Pages Functions catch-all route');
 
 try {
   const manifest = JSON.parse(manifestText);
