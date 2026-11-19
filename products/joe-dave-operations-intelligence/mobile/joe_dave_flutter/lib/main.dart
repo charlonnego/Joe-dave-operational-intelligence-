@@ -491,6 +491,7 @@ class _InvoiceDetailState extends State<InvoiceDetail>{
   ])
  ])));
 }
+}
 class ReceiptsPage extends StatefulWidget{final String token;const ReceiptsPage({super.key,required this.token});@override State<ReceiptsPage> createState()=>_ReceiptsPageState();}
 class _ReceiptsPageState extends State<ReceiptsPage>{
  late Future<List<Map<String,dynamic>>> future;@override void initState(){super.initState();future=load();}
