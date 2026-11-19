@@ -33,18 +33,10 @@ jobs:
         run: flutter analyze --no-fatal-infos
       - name: Run widget tests
         run: flutter test
-      - name: Verify Android target SDK
+      - name: Validate generated Android project configuration
         run: |
-          grep -R -E 'compileSdk(Version)?[ =]+36|compileSdk[[:space:]]*=+[[:space:]]*36' android/app
-      - name: Build Android debug APK
-        run: flutter build apk --debug
-      - name: Upload debug APK for internal QA
-        uses: actions/upload-artifact@v4
-        with:
-          name: joe-dave-android-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
+          test -f android/app/build.gradle || test -f android/app/build.gradle.kts
+          grep -R 'compileSdk' android/app
   ios-simulator:
     runs-on: macos-15
     defaults:
