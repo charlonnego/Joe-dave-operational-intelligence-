@@ -27,11 +27,11 @@ class _JoeDaveAppState extends State<JoeDaveApp>{
  @override void initState(){super.initState();restore();}
  Future<void> restore()async{
   final p=await SharedPreferences.getInstance(),saved=p.getString('jd_token');
-  if(saved!=null){try{final me=await Api(saved).get('/auth/me');if(mounted)setState(()=>{token=saved,profile=me,loading=false});return;}catch(_){await p.remove('jd_token');}}
-  if(mounted)setState(()=>loading=false);
+  if(saved!=null){try{final me=await Api(saved).get('/auth/me');if(mounted)setState(() { token=saved; profile=me; loading=false; });return;}catch(_){await p.remove('jd_token');}}
+  if(mounted)setState(() { loading=false; });
  }
- Future<void> signedIn(String t,Map<String,dynamic> p)async{final s=await SharedPreferences.getInstance();await s.setString('jd_token',t);if(mounted)setState(()=>{token=t,profile=p});}
- Future<void> signOut()async{final t=token;final p=await SharedPreferences.getInstance();await p.remove('jd_token');if(t!=null){try{await Api(t).post('/auth/logout',{});}catch(_){}}if(mounted)setState(()=>{token=null,profile={}});}
+ Future<void> signedIn(String t,Map<String,dynamic> p)async{final s=await SharedPreferences.getInstance();await s.setString('jd_token',t);if(mounted)setState(() { token=t; profile=p; });}
+ Future<void> signOut()async{final t=token;final p=await SharedPreferences.getInstance();await p.remove('jd_token');if(t!=null){try{await Api(t).post('/auth/logout',{});}catch(_){}}if(mounted)setState(() { token=null; profile={}; });}
  @override Widget build(BuildContext context)=>MaterialApp(title:'Joe&dave',debugShowCheckedModeBanner:false,
   theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:bg,colorScheme:ColorScheme.fromSeed(seedColor:blue),
    appBarTheme:const AppBarTheme(backgroundColor:Colors.white,foregroundColor:navy,elevation:0),
@@ -66,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen>{
  bool create=false,busy=false,hide=true;String? error;
  Future<void> submit()async{
   if(email.text.trim().isEmpty||password.text.isEmpty||(create&&business.text.trim().isEmpty)){setState(()=>error='Complete all required fields.');return;}
-  setState(()=>{busy=true,error=null});
+  setState(() { busy=true; error=null; });
   try{final d=await httpPost(create?'/auth/register':'/auth/login',{
    'email':email.text.trim(),'password':password.text,'business_name':business.text.trim(),'display_name':business.text.trim(),'currency_code':'NGN'});
    final t=d['token'];if(t is! String)throw Exception('No session token returned.');await widget.onLogin(t,d);
@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen>{
   if(create)const Padding(padding:EdgeInsets.only(top:8),child:Text('Password must be at least 12 characters.',style:TextStyle(color:Colors.blueGrey,fontSize:12))),
   if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:Colors.red))),
   const SizedBox(height:20),FilledButton(onPressed:busy?null:submit,style:FilledButton.styleFrom(backgroundColor:blue,minimumSize:const Size.fromHeight(52)),child:busy?const CircularProgressIndicator(color:Colors.white):Text(create?'Create workspace':'Sign in')),
-  TextButton(onPressed:busy?null:()=>setState(()=>{create=!create,error=null}),child:Text(create?'Already registered? Sign in':'Create a new business workspace'))
+  TextButton(onPressed:busy?null:()=>setState(() { create=!create; error=null; }),child:Text(create?'Already registered? Sign in':'Create a new business workspace'))
  ]))))));
 }
 
@@ -229,8 +229,8 @@ class _RecordDialogState extends State<RecordDialog>{
   if(error!=null)Align(alignment:Alignment.centerLeft,child:Text(error!,style:const TextStyle(color:Colors.red)))
  ]))),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Cancel')),FilledButton(onPressed:save,child:const Text('Save'))]);
  Widget field(FieldSpec f){
-  if(f.type.startsWith('select:')){final options=f.type.substring(7).split('|');return DropdownButtonFormField<String>(value:vals[f.key]?.isEmpty??true?null:vals[f.key],decoration:InputDecoration(labelText:f.label+(f.required?' *':'')),items:[for(final o in options)DropdownMenuItem(value:o,child:Text(human(o)))],onChanged:(v)=>setState(()=>vals[f.key]=v??''));}
-  if(f.type=='date')return TextField(controller:ctrls[f.key],readOnly:true,decoration:InputDecoration(labelText:f.label+(f.required?' *':''),suffixIcon:const Icon(Icons.calendar_month_outlined)),onTap:()async{final d=await showDatePicker(context:context,initialDate:DateTime.tryParse(vals[f.key]??'')??DateTime.now(),firstDate:DateTime(1990),lastDate:DateTime(2100));if(d!=null)setState(()=>{vals[f.key]=d.toIso8601String().substring(0,10),ctrls[f.key]!.text=vals[f.key]!});});
+  if(f.type.startsWith('select:')){final options=f.type.substring(7).split('|');return DropdownButtonFormField<String>(value:(vals[f.key]?.isEmpty??true)?null:vals[f.key],decoration:InputDecoration(labelText:f.label+(f.required?' *':'')),items:[for(final o in options)DropdownMenuItem(value:o,child:Text(human(o)))],onChanged:(v)=>setState(()=>vals[f.key]=v??''));}
+  if(f.type=='date')return TextField(controller:ctrls[f.key],readOnly:true,decoration:InputDecoration(labelText:f.label+(f.required?' *':''),suffixIcon:const Icon(Icons.calendar_month_outlined)),onTap:()async{final d=await showDatePicker(context:context,initialDate:DateTime.tryParse(vals[f.key]??'')??DateTime.now(),firstDate:DateTime(1990),lastDate:DateTime(2100));if(d!=null)setState(() { vals[f.key]=d.toIso8601String().substring(0,10); ctrls[f.key]!.text=vals[f.key]!; });});
   return TextField(controller:ctrls[f.key],keyboardType:f.type=='number'?const TextInputType.numberWithOptions(decimal:true):f.type=='email'?TextInputType.emailAddress:TextInputType.text,maxLines:f.key.contains('description')||f.key=='notes'||f.key=='body'?3:1,decoration:InputDecoration(labelText:f.label+(f.required?' *':'')),onChanged:(v)=>vals[f.key]=v);
  }
 }
