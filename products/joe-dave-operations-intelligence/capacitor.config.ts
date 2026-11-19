@@ -3,14 +3,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.joedave.operations',
   appName: 'Joe&dave',
+  // The full PWA is copied into www before cap sync. Do not set server.url:
+  // that would replace the bundled app with a remote website.
   webDir: 'www',
-  server: {
-    // Keep API requests on the production Pages origin so /api continues
-    // through the same-origin Cloudflare Pages Function gateway.
-    url: 'https://joe-dave-operations-intelligence.pages.dev',
-    cleartext: false,
-    androidScheme: 'https'
-  },
   android: {
     allowMixedContent: false
   }
