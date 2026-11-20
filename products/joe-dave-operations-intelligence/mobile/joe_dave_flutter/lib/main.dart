@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'module_specs.dart';
 
-const apiRoot='https://joe-dave-operations-intelligence.pages.dev/api';
+const apiRoot='https://international-standard-mobil.joe-dave-operations-intelligence.pages.dev/api';
 const blue=Color(0xFF246BCE),navy=Color(0xFF142B4A),bg=Color(0xFFF4F7FB);
 const groupIcons=<String,IconData>{
  'Finance & Accounts':Icons.account_balance_wallet_outlined,'Sales & CRM':Icons.point_of_sale_rounded,
