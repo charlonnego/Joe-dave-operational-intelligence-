@@ -2,7 +2,7 @@ name: Joe&dave Native Flutter Android build
 on:
   workflow_dispatch:
   push:
-    branches: [main, release/pilot-readiness]
+    branches: [main, release/pilot-readiness, international-standard/mobile-owner-console]
     paths:
       - 'products/joe-dave-operations-intelligence/mobile/joe_dave_flutter/**'
       - '.github/workflows/joe-dave-android.yml'

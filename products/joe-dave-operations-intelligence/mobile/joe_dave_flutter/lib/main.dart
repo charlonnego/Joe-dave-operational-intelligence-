@@ -5,8 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'module_specs.dart';
 
-const apiRoot='https://joe-dave-operations-api.uchechukwuanuforo.workers.dev';
-const blue=Color(0xFF246BCE),navy=Color(0xFF142B4A),bg=Color(0xFFF4F7FB);
+const apiRoot='https://international-standard-mobil.joe-dave-operations-intelligence.pages.dev/api';
+const blue=Color(0xFF087F5B),navy=Color(0xFF123B32),bg=Color(0xFFF3F7F4);
 const groupIcons=<String,IconData>{
  'Finance & Accounts':Icons.account_balance_wallet_outlined,'Sales & CRM':Icons.point_of_sale_rounded,
  'Inventory':Icons.inventory_2_outlined,'Buying':Icons.shopping_cart_outlined,
@@ -35,7 +35,7 @@ class _JoeDaveAppState extends State<JoeDaveApp>{
  Future<void> signedIn(String t,Map<String,dynamic> p)async{final s=await SharedPreferences.getInstance();await s.setString('jd_token',t);if(mounted)setState(() { token=t; profile=p; });}
  Future<void> signOut()async{final t=token;final p=await SharedPreferences.getInstance();await p.remove('jd_token');if(t!=null){try{await Api(t).post('/auth/logout',{});}catch(_){}}if(mounted)setState(() { token=null; profile={}; });}
  @override Widget build(BuildContext context)=>MaterialApp(title:'Joe&dave',debugShowCheckedModeBanner:false,
-  theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:bg,colorScheme:ColorScheme.fromSeed(seedColor:blue),
+  theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:bg,colorScheme:ColorScheme.fromSeed(seedColor:blue,brightness:Brightness.light),
    appBarTheme:const AppBarTheme(backgroundColor:Colors.white,foregroundColor:navy,elevation:0),
    cardTheme:CardThemeData(color:Colors.white,elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16),side:const BorderSide(color:Color(0xFFE5EBF3)))),
    inputDecorationTheme:InputDecorationTheme(filled:true,fillColor:Colors.white,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))),
@@ -87,18 +87,30 @@ class _LoginScreenState extends State<LoginScreen>{
   final d=Map<String,dynamic>.from(decoded);
   if(r.statusCode<200||r.statusCode>=300)throw Exception(d['error']?.toString()??'Sign in failed (HTTP ${r.statusCode}).');return d;
  }
- @override Widget build(BuildContext context)=>Scaffold(body:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(24),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:440),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-  Container(height:60,width:60,alignment:Alignment.center,decoration:BoxDecoration(color:blue,borderRadius:BorderRadius.circular(18)),child:const Icon(Icons.insights_rounded,color:Colors.white,size:32)),
-  const SizedBox(height:24),const Text('Joe&dave',style:TextStyle(fontSize:32,fontWeight:FontWeight.w900,color:navy)),const Text('Operations Intelligence',style:TextStyle(color:Colors.blueGrey)),
-  const SizedBox(height:30),Text(create?'Create your business workspace':'Welcome back',style:const TextStyle(fontSize:22,fontWeight:FontWeight.w800,color:navy)),
-  if(create)...[const SizedBox(height:16),TextField(controller:business,decoration:const InputDecoration(labelText:'Business name',prefixIcon:Icon(Icons.business_outlined)))],
-  const SizedBox(height:14),TextField(controller:email,keyboardType:TextInputType.emailAddress,decoration:const InputDecoration(labelText:'Email address',prefixIcon:Icon(Icons.email_outlined))),
-  const SizedBox(height:12),TextField(controller:password,obscureText:hide,autocorrect:false,enableSuggestions:false,textCapitalization:TextCapitalization.none,keyboardType:TextInputType.visiblePassword,decoration:InputDecoration(labelText:'Password',prefixIcon:const Icon(Icons.lock_outline),suffixIcon:IconButton(onPressed:()=>setState(()=>hide=!hide),icon:Icon(hide?Icons.visibility_outlined:Icons.visibility_off_outlined)))),
-  if(create)const Padding(padding:EdgeInsets.only(top:8),child:Text('Password must be at least 12 characters.',style:TextStyle(color:Colors.blueGrey,fontSize:12))),
-  if(error!=null)Padding(padding:const EdgeInsets.only(top:12),child:Text(error!,style:const TextStyle(color:Colors.red))),
-  const SizedBox(height:20),FilledButton(onPressed:busy?null:submit,style:FilledButton.styleFrom(backgroundColor:blue,minimumSize:const Size.fromHeight(52)),child:busy?const CircularProgressIndicator(color:Colors.white):Text(create?'Create workspace':'Sign in')),
-  TextButton(onPressed:busy?null:()=>setState(() { create=!create; error=null; }),child:Text(create?'Already registered? Sign in':'Create a new business workspace'))
- ]))))));
+ @override Widget build(BuildContext context)=>Scaffold(
+  body:DecoratedBox(decoration:const BoxDecoration(gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFFEAF4EF),Color(0xFFF7F9F7),Color(0xFFE8F0EC)])),
+   child:SafeArea(child:Center(child:SingleChildScrollView(padding:const EdgeInsets.all(22),child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:480),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(color:navy,borderRadius:BorderRadius.circular(26),boxShadow:[BoxShadow(color:navy.withOpacity(.14),blurRadius:28,offset:const Offset(0,14))]),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+     Container(height:52,width:52,alignment:Alignment.center,decoration:BoxDecoration(color:blue,borderRadius:BorderRadius.circular(16)),child:const Icon(Icons.insights_rounded,color:Colors.white,size:29)),
+     const SizedBox(height:24),const Text('JOE&DAVE',style:TextStyle(color:Colors.white,fontSize:29,fontWeight:FontWeight.w900,letterSpacing:1.2)),
+     const SizedBox(height:6),const Text('Operations Intelligence',style:TextStyle(color:Color(0xFFC8DDD3),fontSize:15)),
+     const SizedBox(height:18),const Text('Clarity for every part of your business.',style:TextStyle(color:Colors.white,fontSize:17,fontWeight:FontWeight.w600)),
+    ]),
+    const SizedBox(height:18),
+    Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(24),border:Border.all(color:const Color(0xFFE1EAE4)),boxShadow:[BoxShadow(color:navy.withOpacity(.06),blurRadius:22,offset:const Offset(0,8))]),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+     Text(create?'Create your workspace':'Welcome back',style:const TextStyle(fontSize:24,fontWeight:FontWeight.w900,color:navy)),
+     const SizedBox(height:5),Text(create?'Set up your business operations workspace.':'Sign in to continue to your business workspace.',style:const TextStyle(color:Colors.blueGrey)),
+     if(create)...[const SizedBox(height:18),TextField(controller:business,textCapitalization:TextCapitalization.words,decoration:const InputDecoration(labelText:'Business name',prefixIcon:Icon(Icons.business_outlined)))],
+     const SizedBox(height:16),TextField(controller:email,keyboardType:TextInputType.emailAddress,autocorrect:false,enableSuggestions:false,textCapitalization:TextCapitalization.none,decoration:const InputDecoration(labelText:'Email address',prefixIcon:Icon(Icons.email_outlined))),
+     const SizedBox(height:12),TextField(controller:password,obscureText:hide,autocorrect:false,enableSuggestions:false,textCapitalization:TextCapitalization.none,keyboardType:TextInputType.visiblePassword,decoration:InputDecoration(labelText:'Password',prefixIcon:const Icon(Icons.lock_outline),suffixIcon:IconButton(onPressed:()=>setState(()=>hide=!hide),icon:Icon(hide?Icons.visibility_outlined:Icons.visibility_off_outlined)))),
+     if(create)const Padding(padding:EdgeInsets.only(top:8),child:Text('Use at least 12 characters for your password.',style:TextStyle(color:Colors.blueGrey,fontSize:12))),
+     if(error!=null)Container(margin:const EdgeInsets.only(top:14),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xFFFFF1F0),borderRadius:BorderRadius.circular(10)),child:Text(error!,style:const TextStyle(color:Color(0xFFB42318)))),
+     const SizedBox(height:20),FilledButton(onPressed:busy?null:submit,style:FilledButton.styleFrom(backgroundColor:blue,foregroundColor:Colors.white,minimumSize:const Size.fromHeight(54),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13))),child:busy?const SizedBox(height:22,width:22,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):Text(create?'Create workspace':'Sign in',style:const TextStyle(fontWeight:FontWeight.w800))),
+     const SizedBox(height:8),TextButton(onPressed:busy?null:()=>setState(() { create=!create; error=null; }),child:Text(create?'Already have a workspace? Sign in':'Create a new business workspace',style:const TextStyle(color:blue,fontWeight:FontWeight.w700))),
+    ])),
+    const SizedBox(height:18),const Text('Secure business access  •  Finance  •  Operations  •  Intelligence',textAlign:TextAlign.center,style:TextStyle(color:Colors.blueGrey,fontSize:11)),
+   ]))))));
+
 }
 
 class Workspace extends StatefulWidget{
@@ -121,13 +133,15 @@ class _WorkspaceState extends State<Workspace>{
    current=='team'?TeamMembersPage(token:widget.token):
    current=='business-settings'?BusinessSettingsPage(token:widget.token):
    current=='inventory-import'?InventoryImportPage(token:widget.token):
+   current=='more'?MoreModulesPage(onSelect:(v)=>setState(()=>current=v)):
+   current=='owner-console'?OwnerConsolePage(token:widget.token):
    spec.isNotEmpty?ModulePage(key:ValueKey(current),token:widget.token,spec:spec.first):
    sp.isNotEmpty?SpecialPage(key:ValueKey(current),token:widget.token,title:sp.first.$1,path:sp.first.$2):Dashboard(token:widget.token,onSelect:(v)=>setState(()=>current=v));
   return Scaffold(appBar:AppBar(title:Row(children:[const Icon(Icons.insights_rounded,color:blue),const SizedBox(width:8),const Text('Joe&dave',style:TextStyle(fontWeight:FontWeight.w900)),if(wide)Flexible(child:Text('  ·  '+businessName,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:12,color:Colors.blueGrey)))]),
    actions:[PopupMenuButton<String>(onSelected:(v){if(v=='settings')setState(()=>current='settings');if(v=='logout')widget.onLogout();},itemBuilder:(_)=>const [PopupMenuItem(value:'settings',child:Text('Workspace settings')),PopupMenuItem(value:'logout',child:Text('Sign out'))])]),
    drawer:wide?null:Drawer(child:menu()),
    body:wide?Row(children:[SizedBox(width:285,child:menu()),const VerticalDivider(width:1),Expanded(child:page)]):page,
-   bottomNavigationBar:wide?null:NavigationBar(selectedIndex:current=='home'?0:1,onDestinationSelected:(i)=>setState(()=>current=i==0?'home':'settings'),destinations:const [NavigationDestination(icon:Icon(Icons.dashboard_outlined),label:'Overview'),NavigationDestination(icon:Icon(Icons.settings_outlined),label:'Settings')]));
+   bottomNavigationBar:wide?null:NavigationBar(selectedIndex:current=='home'?0:(current.startsWith('selling/')||current.startsWith('crm/')||current=='finance/invoices'?1:(current.startsWith('inventory/')||current=='inventory-import'?2:3)),onDestinationSelected:(i)=>setState(()=>current=switch(i){0=>'home',1=>'finance/invoices',2=>'inventory/items',_=>'more'}),destinations:const [NavigationDestination(icon:Icon(Icons.dashboard_outlined),label:'Overview'),NavigationDestination(icon:Icon(Icons.point_of_sale_outlined),label:'Sales'),NavigationDestination(icon:Icon(Icons.inventory_2_outlined),label:'Inventory'),NavigationDestination(icon:Icon(Icons.grid_view_rounded),label:'More')]));
  }
  Widget menu()=>SafeArea(child:Column(children:[
   Padding(padding:const EdgeInsets.all(16),child:Text(businessName,style:const TextStyle(fontWeight:FontWeight.w800,color:navy))),
@@ -135,6 +149,7 @@ class _WorkspaceState extends State<Workspace>{
   ListTile(selected:current=='business-settings',leading:const Icon(Icons.business_outlined),title:const Text('Business profile & branding'),onTap:()=>choose('business-settings')),
   ListTile(selected:current=='team',leading:const Icon(Icons.manage_accounts_outlined),title:const Text('Team & permissions'),onTap:()=>choose('team')),
   ListTile(selected:current=='inventory-import',leading:const Icon(Icons.file_upload_outlined),title:const Text('Inventory CSV import'),onTap:()=>choose('inventory-import')),
+  ListTile(selected:current=='owner-console',leading:const Icon(Icons.admin_panel_settings_outlined,color:blue),title:const Text('Platform owner console'),subtitle:const Text('Restricted platform access'),onTap:()=>choose('owner-console')),
   Expanded(child:ListView(children:[
    for(final group in moduleGroups.entries)ExpansionTile(leading:Icon(groupIcons[group.key]??Icons.folder_outlined,color:blue),title:Text(group.key,style:const TextStyle(fontWeight:FontWeight.w700)),initiallyExpanded:group.value.contains(current),children:[
     for(final k in group.value)Builder(builder:(ctx){final m=moduleSpecs.firstWhere((x)=>x.key==k);return ListTile(dense:true,selected:current==k,title:Text(m.title),contentPadding:const EdgeInsets.only(left:54,right:12),onTap:()=>choose(k));})
@@ -145,6 +160,98 @@ class _WorkspaceState extends State<Workspace>{
   ListTile(leading:const Icon(Icons.logout),title:const Text('Sign out'),onTap:widget.onLogout)
  ]));
  void choose(String k){setState(()=>current=k);if(MediaQuery.of(context).size.width<=900)Navigator.pop(context);}
+}
+
+
+class MoreModulesPage extends StatelessWidget {
+ final ValueChanged<String> onSelect;
+ const MoreModulesPage({super.key,required this.onSelect});
+ @override Widget build(BuildContext context)=>ListView(padding:const EdgeInsets.all(18),children:[
+  const Text('All modules',style:TextStyle(fontSize:26,fontWeight:FontWeight.w900,color:navy)),
+  const Text('Explore the complete business workspace.',style:TextStyle(color:Colors.blueGrey)),
+  const SizedBox(height:12),
+  Card(child:ListTile(leading:const CircleAvatar(child:Icon(Icons.admin_panel_settings_outlined)),title:const Text('Platform owner console',style:TextStyle(fontWeight:FontWeight.w800)),subtitle:const Text('Platform-wide account and plan controls'),trailing:const Icon(Icons.chevron_right),onTap:()=>onSelect('owner-console'))),
+  for(final group in moduleGroups.entries)Card(child:ExpansionTile(leading:Icon(groupIcons[group.key]??Icons.folder_outlined,color:blue),title:Text(group.key,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(group.value.length.toString()+' modules'),children:[
+   for(final key in group.value)Builder(builder:(context){final matches=moduleSpecs.where((m)=>m.key==key);if(matches.isEmpty)return const SizedBox.shrink();final m=matches.first;return ListTile(title:Text(m.title),leading:const Icon(Icons.chevron_right),onTap:()=>onSelect(key));})
+  ])),
+  Card(child:ExpansionTile(leading:const Icon(Icons.insights_rounded,color:blue),title:const Text('Sales Intelligence',style:TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(special.length.toString()+' modules'),children:[
+   for(final item in special)ListTile(title:Text(item.$1),onTap:()=>onSelect(item.$2))
+  ])),
+ ]);
+}
+
+class OwnerConsolePage extends StatefulWidget {
+ final String token;
+ const OwnerConsolePage({super.key,required this.token});
+ @override State<OwnerConsolePage> createState()=>_OwnerConsolePageState();
+}
+class _OwnerConsolePageState extends State<OwnerConsolePage> {
+ late Future<Map<String,dynamic>> future;
+ bool busy=false;
+ @override void initState(){super.initState();future=load();}
+ Future<Map<String,dynamic>> load()=>Api(widget.token).get('/platform/overview');
+ Future<void> refresh()async{setState(()=>future=load());await future;}
+ Future<void> change(Map business,String action)async{
+  final id=business['id']?.toString()??'';
+  if(id.isEmpty)return;
+  final plan=(business['plan_code']??'free').toString();
+  final status=(business['access_status']??'active').toString();
+  final nextPlan=action.startsWith('plan:')?action.substring(5):plan;
+  final nextStatus=action=='suspend'?'suspended':(action=='activate'?'active':status);
+  setState(()=>busy=true);
+  try{
+   await Api(widget.token).post('/platform/business/$id',{'plan_code':nextPlan,'access_status':nextStatus});
+   await refresh();
+   if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Platform account updated.')));
+  }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(e.toString())));}
+  finally{if(mounted)setState(()=>busy=false);}
+ }
+ @override Widget build(BuildContext context)=>FutureBuilder<Map<String,dynamic>>(future:future,builder:(context,snapshot){
+  if(snapshot.connectionState==ConnectionState.waiting)return const Center(child:CircularProgressIndicator());
+  if(snapshot.hasError)return ErrorView(message:'Owner console access failed: '+snapshot.error.toString(),retry:refresh);
+  final data=snapshot.data??{};
+  final summary=data['summary'] as Map? ??{};
+  final rows=(data['businesses'] as List? ??[]).whereType<Map>().toList();
+  final billing=data['billing'] as Map? ??{};
+  return RefreshIndicator(onRefresh:refresh,child:ListView(padding:const EdgeInsets.all(18),children:[
+   Row(children:[const Expanded(child:Text('Platform owner console',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900,color:navy))),IconButton(onPressed:refresh,icon:const Icon(Icons.refresh))]),
+   const Text('Global workspace administration. Access is verified by the API, not by this screen.',style:TextStyle(color:Colors.blueGrey)),
+   const SizedBox(height:16),
+   GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:MediaQuery.of(context).size.width>650?4:2,childAspectRatio:1.65,crossAxisSpacing:10,mainAxisSpacing:10,children:[
+    _OwnerMetric(label:'Businesses',value:summary['businesses']??0,icon:Icons.business_outlined),
+    _OwnerMetric(label:'Users',value:summary['users']??0,icon:Icons.people_outline),
+    _OwnerMetric(label:'New · 30 days',value:summary['new_businesses']??0,icon:Icons.trending_up),
+    _OwnerMetric(label:'Suspended',value:summary['suspended']??0,icon:Icons.pause_circle_outline),
+   ]),
+   const SizedBox(height:18),
+   const Text('Business workspaces',style:TextStyle(fontSize:18,fontWeight:FontWeight.w900,color:navy)),
+   if(rows.isEmpty)const Padding(padding:EdgeInsets.all(20),child:Text('No business workspaces found.')),
+   for(final b in rows)Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Row(children:[Expanded(child:Text((b['display_name']??b['legal_name']??'Unnamed business').toString(),style:const TextStyle(fontWeight:FontWeight.w800,fontSize:15))),PopupMenuButton<String>(enabled:!busy,onSelected:(v)=>change(b,v),itemBuilder:(_)=>[
+     const PopupMenuItem(value:'plan:free',child:Text('Set Free plan')),
+     const PopupMenuItem(value:'plan:starter',child:Text('Set Starter plan')),
+     const PopupMenuItem(value:'plan:growth',child:Text('Set Growth plan')),
+     const PopupMenuItem(value:'plan:business',child:Text('Set Business plan')),
+     PopupMenuItem(value:(b['access_status']=='suspended'?'activate':'suspend'),child:Text(b['access_status']=='suspended'?'Reactivate workspace':'Suspend workspace')),
+    ])]),
+    Text((b['owner_email']??'No owner email').toString(),style:const TextStyle(color:Colors.blueGrey,fontSize:12)),
+    const SizedBox(height:8),
+    Wrap(spacing:8,runSpacing:6,children:[
+     Chip(label:Text('Plan: '+(b['plan_code']??'free').toString())),
+     Chip(label:Text('Access: '+(b['access_status']??'active').toString())),
+     if(b['billing_status']!=null)Chip(label:Text('Billing: '+b['billing_status'].toString())),
+    ]),
+   ]))),
+   if(billing['provider_connected']!=true)const Padding(padding:EdgeInsets.only(top:10),child:Text('Billing provider is not connected. Plan changes here are administrative and do not confirm payment.',style:TextStyle(color:Colors.deepOrange,fontSize:12))),
+  ]));
+ });
+}
+class _OwnerMetric extends StatelessWidget {
+ final String label;final Object value;final IconData icon;
+ const _OwnerMetric({required this.label,required this.value,required this.icon});
+ @override Widget build(BuildContext context)=>Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[
+  Icon(icon,color:blue),const SizedBox(height:8),Text(value.toString(),style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:navy)),Text(label,style:const TextStyle(fontSize:12,color:Colors.blueGrey))
+ ])));
 }
 
 class Dashboard extends StatefulWidget{
@@ -160,22 +267,34 @@ class _DashboardState extends State<Dashboard>{
   if(s.hasError)return ErrorView(message:s.error.toString(),retry:refresh);
   final data=s.data??{},metrics=<MapEntry<String,dynamic>>[];
   void collect(Map m){m.forEach((k,v){if(v is num)metrics.add(MapEntry(k,v));else if(v is Map)collect(v);});}collect(data);
-  final quick=< (String,String,IconData) >[
-   ('finance/invoices','Invoices',Icons.receipt_long_outlined),('finance/customers','Customers',Icons.people_outline),
-   ('inventory/items','Items & stock',Icons.inventory_2_outlined),('buying/orders','Purchase orders',Icons.shopping_cart_outlined),
-   ('hr/employees','Employees',Icons.groups_outlined),('finance/profit-loss','Profit & loss',Icons.query_stats_outlined)
+  final quick=< (String,String,IconData,String) >[
+   ('finance/invoices','Create invoice',Icons.receipt_long_outlined,'Bill customers and track payments'),
+   ('finance/customers','Customers',Icons.people_outline,'Manage customer relationships'),
+   ('inventory/items','Inventory',Icons.inventory_2_outlined,'Stock, items and availability'),
+   ('buying/orders','Purchase orders',Icons.shopping_cart_outlined,'Control procurement'),
+   ('hr/employees','People',Icons.groups_outlined,'Team and workforce'),
+   ('finance/profit-loss','Financial reports',Icons.query_stats_outlined,'Understand business performance')
   ];
-  return RefreshIndicator(onRefresh:refresh,child:ListView(padding:const EdgeInsets.all(20),children:[
-   const Text('Operations Intelligence',style:TextStyle(color:Colors.blueGrey)),const Text('Business overview',style:TextStyle(fontSize:27,fontWeight:FontWeight.w900,color:navy)),
-   const SizedBox(height:18),
-   if(metrics.isEmpty)const Card(child:Padding(padding:EdgeInsets.all(18),child:Text('Live business metrics will appear here as transactions are recorded.')))
-   else Wrap(spacing:10,runSpacing:10,children:[for(final m in metrics.take(8))SizedBox(width:MediaQuery.of(context).size.width>700?190:(MediaQuery.of(context).size.width-52)/2,child:Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(human(m.key),style:const TextStyle(color:Colors.blueGrey,fontSize:12)),const SizedBox(height:8),Text(m.value.toString(),style:const TextStyle(fontSize:24,fontWeight:FontWeight.w900,color:navy))]))))]),
-   const SizedBox(height:22),const Text('Quick access',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:navy)),const SizedBox(height:10),
-   GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:MediaQuery.of(context).size.width>700?3:2,childAspectRatio:1.8,crossAxisSpacing:10,mainAxisSpacing:10,children:[for(final q in quick)InkWell(onTap:()=>widget.onSelect(q.$1),borderRadius:BorderRadius.circular(16),child:Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[Icon(q.$3,color:blue),const SizedBox(height:7),Text(q.$2,style:const TextStyle(fontWeight:FontWeight.w700,color:navy))]))))]),
-   const SizedBox(height:22),const Text('Business functions',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800,color:navy)),
-   for(final g in moduleGroups.entries)Card(child:ListTile(leading:Icon(groupIcons[g.key],color:blue),title:Text(g.key,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(g.value.length.toString()+' modules'),trailing:const Icon(Icons.chevron_right),onTap:()=>widget.onSelect(g.value.first)))
+  final width=MediaQuery.of(context).size.width;
+  final columns=width>1050?4:(width>650?3:2);
+  return RefreshIndicator(onRefresh:refresh,child:ListView(padding:EdgeInsets.all(width>700?26:16),children:[
+   Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF123B32),Color(0xFF087F5B)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    const Text('JOE&DAVE  /  OPERATIONS INTELLIGENCE',style:TextStyle(color:Color(0xFFCBE5D8),fontSize:10,fontWeight:FontWeight.w800,letterSpacing:1.1)),
+    const SizedBox(height:14),const Text('Your business,\nin clear view.',style:TextStyle(color:Colors.white,fontSize:29,height:1.08,fontWeight:FontWeight.w900)),
+    const SizedBox(height:9),const Text('A connected view of finance, people, inventory and day-to-day operations.',style:TextStyle(color:Color(0xFFE2F1E9),fontSize:13)),
+    const SizedBox(height:16),Row(children:[const Icon(Icons.circle,color:Color(0xFF8DE0B4),size:9),const SizedBox(width:7),const Text('Live workspace data',style:TextStyle(color:Colors.white,fontWeight:FontWeight.w700,fontSize:12)),const Spacer(),IconButton(onPressed:refresh,icon:const Icon(Icons.refresh,color:Colors.white),tooltip:'Refresh data')])
+   ]),
+   const SizedBox(height:22),const Text('Business performance',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:navy)),
+   const SizedBox(height:12),
+   if(metrics.isEmpty)Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFE1EAE4))),child:const Text('Your workspace is ready. Live business metrics will appear here as transactions are recorded.',style:TextStyle(color:Colors.blueGrey)))
+   else GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:columns,childAspectRatio:width<400?1.45:1.7,crossAxisSpacing:10,mainAxisSpacing:10,children:[for(final m in metrics.take(8))Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(16),border:Border.all(color:const Color(0xFFE1EAE4))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Icon(Icons.insights_outlined,color:blue,size:19),const SizedBox(height:8),Text(m.value.toString(),maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:22,fontWeight:FontWeight.w900,color:navy)),const SizedBox(height:3),Text(human(m.key),maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.blueGrey,fontSize:11))]))]),
+   const SizedBox(height:24),const Text('Quick actions',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:navy)),const SizedBox(height:12),
+   GridView.count(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisCount:columns>3?3:columns,childAspectRatio:width<400?1.25:1.45,crossAxisSpacing:10,mainAxisSpacing:10,children:[for(final q in quick)InkWell(onTap:()=>widget.onSelect(q.$1),borderRadius:BorderRadius.circular(17),child:Container(padding:const EdgeInsets.all(14),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(17),border:Border.all(color:const Color(0xFFE1EAE4))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Container(padding:const EdgeInsets.all(9),decoration:BoxDecoration(color:const Color(0xFFEAF5EF),borderRadius:BorderRadius.circular(12)),child:Icon(q.$3,color:blue,size:21)),const SizedBox(height:10),Text(q.$2,style:const TextStyle(fontWeight:FontWeight.w800,color:navy)),const SizedBox(height:3),Text(q.$4,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.blueGrey,fontSize:10))])))]),
+   const SizedBox(height:24),const Text('Explore business functions',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:navy)),const SizedBox(height:10),
+   for(final g in moduleGroups.entries)Container(margin:const EdgeInsets.only(bottom:9),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(15),border:Border.all(color:const Color(0xFFE1EAE4))),child:ListTile(leading:Container(padding:const EdgeInsets.all(9),decoration:BoxDecoration(color:const Color(0xFFEAF5EF),borderRadius:BorderRadius.circular(11)),child:Icon(groupIcons[g.key]??Icons.folder_outlined,color:blue)),title:Text(g.key,style:const TextStyle(fontWeight:FontWeight.w800,color:navy)),subtitle:Text(g.value.length.toString()+' modules',style:const TextStyle(color:Colors.blueGrey,fontSize:11)),trailing:const Icon(Icons.arrow_forward_ios_rounded,size:15),onTap:()=>widget.onSelect(g.value.first)))
   ]));
  });
+
 }
 
 class ModulePage extends StatefulWidget{
